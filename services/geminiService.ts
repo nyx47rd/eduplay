@@ -1,8 +1,8 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { GameType, GameData, QuizItem, MatchingPair, TrueFalseItem, FlashcardItem } from "../types";
 
-const apiKey = import.meta.env.VITE_API_KEY || process.env.API_KEY || '';
-const ai = new GoogleGenAI({ apiKey: apiKey });
+// Fix: The API key must be obtained exclusively from the environment variable process.env.API_KEY
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 // Schemas for structured output
 const quizSchema = {
