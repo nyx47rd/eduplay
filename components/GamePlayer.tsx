@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { GameModule, GameType, QuizItem, MatchingPair, TrueFalseItem, FlashcardItem, SequenceItem, ClozeItem } from '../types';
 import { CheckCircle, XCircle, ChevronLeft, ChevronRight, RotateCcw, ArrowDown, Check, Clock } from 'lucide-react';
@@ -22,11 +23,13 @@ const GamePlayer: React.FC<GamePlayerProps> = ({ game, onBack }) => {
     setTimeLeft(game.settings?.timeLimit && game.settings.timeLimit > 0 ? game.settings.timeLimit : null);
     setTimerActive(true);
     
-    // Increment play count in DB (fire and forget)
-    if(game.id && game.author_id) {
-        supabase.rpc('increment_plays', { row_id: game.id }).catch(() => {
-            // If RPC doesn't exist, try standard update, though RLS might block if not owner
-            // Ignoring error for play count
+    // Increment play count safely using RPC
+    if(supabase && game.id) {
+        supabase.rpc('increment_plays', { row_id: game.id }).then(({ error }) => {
+            if (error) {
+                // If RPC fails (e.g. not created in DB), try fallback to direct update if user owns it
+                // console.warn("Play count update failed", error);
+            }
         });
     }
 
@@ -72,7 +75,7 @@ const GamePlayer: React.FC<GamePlayerProps> = ({ game, onBack }) => {
 
   if (isFinished) {
     return (
-      <div className="max-w-2xl mx-auto p-8 bg-slate-800 rounded-2xl shadow-xl text-center border border-slate-700 animate-fade-in">
+      <div className="max-w-2xl mx-auto p-8 bg-slate-800 rounded-2xl shadow-xl text-center border border-slate-700 animate-fade-in mt-10">
         <h2 className="text-3xl font-bold text-white mb-4">
             {timeLeft === 0 ? "Time's Up!" : "Good Job!"}
         </h2>
@@ -96,7 +99,11 @@ const GamePlayer: React.FC<GamePlayerProps> = ({ game, onBack }) => {
   }
 
   return (
-      <div className="relative">
+      <div className="relative pb-20">
+          <button onClick={onBack} className="absolute top-0 left-0 text-gray-400 hover:text-white flex items-center mb-4">
+              <ChevronLeft className="w-5 h-5 mr-1"/> Exit
+          </button>
+
           {timeLeft !== null && (
               <div className="fixed top-20 right-4 z-50 bg-slate-800 border border-slate-600 px-4 py-2 rounded-full shadow-lg flex items-center text-white font-mono font-bold">
                   <Clock className="w-4 h-4 mr-2 text-indigo-400"/>
@@ -104,25 +111,26 @@ const GamePlayer: React.FC<GamePlayerProps> = ({ game, onBack }) => {
               </div>
           )}
           
-          {/* Render specific game types */}
-          {(() => {
-            switch (game.gameType) {
-                case GameType.QUIZ:
-                return <QuizPlayer data={game.data as { type: GameType.QUIZ; items: QuizItem[] }} onFinish={handleFinish} randomize={game.settings?.randomizeOrder} />;
-                case GameType.MATCHING:
-                return <MatchingPlayer data={game.data as { type: GameType.MATCHING; pairs: MatchingPair[] }} onFinish={handleFinish} />;
-                case GameType.TRUE_FALSE:
-                return <TrueFalsePlayer data={game.data as { type: GameType.TRUE_FALSE; items: TrueFalseItem[] }} onFinish={handleFinish} />;
-                case GameType.FLASHCARD:
-                return <FlashcardPlayer data={game.data as { type: GameType.FLASHCARD; items: FlashcardItem[] }} onFinish={() => handleFinish(100, 100)} />;
-                case GameType.SEQUENCE:
-                return <SequencePlayer data={game.data as { type: GameType.SEQUENCE; items: SequenceItem[] }} onFinish={handleFinish} />;
-                case GameType.CLOZE:
-                return <ClozePlayer data={game.data as { type: GameType.CLOZE; data: ClozeItem }} onFinish={handleFinish} caseSensitive={game.settings?.caseSensitive} />;
-                default:
-                return <div className="text-white">Unknown game type</div>;
-            }
-          })()}
+          <div className="mt-8">
+            {(() => {
+                switch (game.gameType) {
+                    case GameType.QUIZ:
+                    return <QuizPlayer data={game.data as { type: GameType.QUIZ; items: QuizItem[] }} onFinish={handleFinish} randomize={game.settings?.randomizeOrder} />;
+                    case GameType.MATCHING:
+                    return <MatchingPlayer data={game.data as { type: GameType.MATCHING; pairs: MatchingPair[] }} onFinish={handleFinish} />;
+                    case GameType.TRUE_FALSE:
+                    return <TrueFalsePlayer data={game.data as { type: GameType.TRUE_FALSE; items: TrueFalseItem[] }} onFinish={handleFinish} />;
+                    case GameType.FLASHCARD:
+                    return <FlashcardPlayer data={game.data as { type: GameType.FLASHCARD; items: FlashcardItem[] }} onFinish={() => handleFinish(100, 100)} />;
+                    case GameType.SEQUENCE:
+                    return <SequencePlayer data={game.data as { type: GameType.SEQUENCE; items: SequenceItem[] }} onFinish={handleFinish} />;
+                    case GameType.CLOZE:
+                    return <ClozePlayer data={game.data as { type: GameType.CLOZE; data: ClozeItem }} onFinish={handleFinish} caseSensitive={game.settings?.caseSensitive} />;
+                    default:
+                    return <div className="text-white text-center">Unknown game type</div>;
+                }
+            })()}
+          </div>
       </div>
   );
 };
@@ -135,7 +143,6 @@ const QuizPlayer = ({ data, onFinish, randomize }: { data: { items: QuizItem[] }
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [showResult, setShowResult] = useState(false);
 
-  // If randomize is true, we shuffle questions initially
   const questions = useMemo(() => {
       if (randomize) {
           return [...data.items].sort(() => Math.random() - 0.5);
@@ -145,8 +152,6 @@ const QuizPlayer = ({ data, onFinish, randomize }: { data: { items: QuizItem[] }
 
   const currentQ = questions[currentIdx];
 
-  // Randomize OPTIONS for the current question every time the question changes
-  // We memorize this so it doesn't re-shuffle on re-renders (like when selecting an answer)
   const shuffledOptions = useMemo(() => {
       return [...currentQ.options].sort(() => Math.random() - 0.5);
   }, [currentQ]);
@@ -171,7 +176,7 @@ const QuizPlayer = ({ data, onFinish, randomize }: { data: { items: QuizItem[] }
   };
 
   return (
-    <div className="max-w-3xl mx-auto bg-slate-800 rounded-xl shadow-lg p-6 border border-slate-700 mt-8">
+    <div className="max-w-3xl mx-auto bg-slate-800 rounded-xl shadow-lg p-6 border border-slate-700 mt-4 animate-fade-in">
       <div className="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
         <span className="text-sm font-semibold text-gray-400">Question {currentIdx + 1} / {questions.length}</span>
         <span className="text-sm font-bold text-indigo-400">Score: {score}</span>
@@ -255,7 +260,7 @@ const MatchingPlayer = ({ data, onFinish }: { data: { pairs: MatchingPair[] }, o
   };
 
   return (
-    <div className="max-w-4xl mx-auto mt-8">
+    <div className="max-w-4xl mx-auto mt-4 animate-fade-in">
       <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 mb-4 text-center">
          <p className="text-indigo-300 font-medium">Tap left item, then matching right item.</p>
          <p className="text-sm text-gray-500 mt-1">Mistakes: {mistakes}</p>
@@ -303,9 +308,6 @@ const MatchingPlayer = ({ data, onFinish }: { data: { pairs: MatchingPair[] }, o
   );
 };
 
-// ... TrueFalsePlayer, FlashcardPlayer, SequencePlayer, ClozePlayer remain mostly same but ensured they use data props
-// Redefining just to ensure file completeness for changes
-
 const TrueFalsePlayer = ({ data, onFinish }: { data: { items: TrueFalseItem[] }, onFinish: (s: number, t: number) => void }) => {
     const [currentIdx, setCurrentIdx] = useState(0);
     const [score, setScore] = useState(0);
@@ -329,7 +331,7 @@ const TrueFalsePlayer = ({ data, onFinish }: { data: { items: TrueFalseItem[] },
     };
 
     return (
-        <div className="max-w-xl mx-auto bg-slate-800 rounded-xl shadow-lg p-8 text-center border border-slate-700 mt-8">
+        <div className="max-w-xl mx-auto bg-slate-800 rounded-xl shadow-lg p-8 text-center border border-slate-700 mt-4 animate-fade-in">
              <div className="mb-8">
                  <span className="text-xs uppercase tracking-wider text-gray-500 font-bold">Statement {currentIdx + 1} of {data.items.length}</span>
                  <h2 className="text-2xl font-bold text-white mt-4 leading-relaxed">{item.statement}</h2>
@@ -364,7 +366,7 @@ const FlashcardPlayer = ({ data, onFinish }: { data: { items: FlashcardItem[] },
     };
 
     return (
-        <div className="max-w-2xl mx-auto flex flex-col items-center mt-8">
+        <div className="max-w-2xl mx-auto flex flex-col items-center mt-4 animate-fade-in">
             <div className="w-full text-center mb-4 text-gray-400">Card {currentIdx + 1} / {data.items.length}</div>
             <div className="group w-full h-80 perspective-1000 cursor-pointer" onClick={() => setIsFlipped(!isFlipped)} style={{ perspective: '1000px' }}>
                 <div className={`relative w-full h-full text-center transition-transform duration-500 transform-style-3d shadow-xl rounded-2xl ${isFlipped ? 'rotate-y-180' : ''}`} style={{ transformStyle: 'preserve-3d', transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}>
@@ -400,7 +402,7 @@ const SequencePlayer = ({ data, onFinish }: { data: { items: SequenceItem[] }, o
         setTimeout(() => { if (correct === items.length) onFinish(100, 100); }, 1500);
     };
     return (
-        <div className="max-w-xl mx-auto mt-8">
+        <div className="max-w-xl mx-auto mt-4 animate-fade-in">
             <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 mb-6">
                 <h3 className="text-lg font-bold text-white mb-2 text-center">Arrange in correct order</h3>
                 <div className="space-y-2">{items.map((item, idx) => (<div key={item.id} className={`p-4 rounded-lg flex items-center justify-between border ${checked ? (item.order === idx ? 'bg-emerald-900/40 border-emerald-500' : 'bg-red-900/40 border-red-500') : 'bg-slate-700 border-slate-600'}`}><span className="text-white font-medium">{item.text}</span>{!checked && (<div className="flex flex-col space-y-1 ml-4"><button onClick={() => moveItem(idx, 'up')} disabled={idx === 0} className="p-1 hover:bg-slate-600 rounded disabled:opacity-30 text-gray-300"><ChevronLeft className="w-4 h-4 rotate-90" /></button><button onClick={() => moveItem(idx, 'down')} disabled={idx === items.length - 1} className="p-1 hover:bg-slate-600 rounded disabled:opacity-30 text-gray-300"><ChevronLeft className="w-4 h-4 -rotate-90" /></button></div>)}</div>))}</div>
@@ -424,7 +426,7 @@ const ClozePlayer = ({ data, onFinish, caseSensitive }: { data: { data: ClozeIte
         if (correct === data.data.answers.length) setTimeout(() => onFinish(100, 100), 1000);
     };
     return (
-        <div className="max-w-2xl mx-auto bg-slate-800 p-8 rounded-xl border border-slate-700 mt-8">
+        <div className="max-w-2xl mx-auto bg-slate-800 p-8 rounded-xl border border-slate-700 mt-4 animate-fade-in">
             <h3 className="text-xl font-bold text-white mb-6 text-center">Fill in the Blanks</h3>
             <div className="text-lg leading-loose text-gray-200">{data.data.textParts.map((part, index) => (<React.Fragment key={index}><span>{part}</span>{index < data.data.answers.length && (<span className="inline-block mx-1"><input type="text" value={inputs[index]} onChange={(e) => { if (checked) setChecked(false); const newInputs = [...inputs]; newInputs[index] = e.target.value; setInputs(newInputs); }} disabled={checked && (caseSensitive ? inputs[index].trim() === data.data.answers[index] : inputs[index].trim().toLowerCase() === data.data.answers[index].toLowerCase())} className={`w-32 bg-slate-900 border-b-2 px-2 py-1 outline-none text-center transition-colors ${checked ? ((caseSensitive ? inputs[index].trim() === data.data.answers[index] : inputs[index].trim().toLowerCase() === data.data.answers[index].toLowerCase()) ? 'border-emerald-500 text-emerald-400' : 'border-red-500 text-red-400') : 'border-slate-500 text-white focus:border-indigo-500'}`} /></span>)}</React.Fragment>))}</div>
             <div className="mt-8"><button onClick={handleCheck} className="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold hover:bg-indigo-500 transition-colors">Check Answers</button></div>

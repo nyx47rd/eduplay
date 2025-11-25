@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { GameType, GameModule, QuizItem, MatchingPair, TrueFalseItem, FlashcardItem, SequenceItem, ClozeItem, GameSettings } from '../types';
 import { Save, Trash2, ArrowRight, ArrowLeft, Settings, Plus, Minus, X, Globe, Lock, Loader2 } from 'lucide-react';
@@ -130,6 +131,29 @@ const CreateGame: React.FC<CreateGameProps> = ({ onGameCreated, onCancel, initia
     setIsSaving(true);
 
     try {
+        if (!supabase) {
+            // Demo Mode Saving (In-Memory)
+            const demoGame: GameModule = {
+                id: initialGame?.id || `demo-${Date.now()}`,
+                title,
+                description: description || `A ${gameType.toLowerCase()} game.`,
+                category: 'Custom',
+                gameType,
+                data: finalData,
+                settings,
+                author: 'You',
+                author_id: userId || 'demo-user',
+                plays: 0,
+                likes: 0,
+                isPublic
+            };
+            setTimeout(() => {
+                onGameCreated(demoGame);
+                setIsSaving(false);
+            }, 500);
+            return;
+        }
+
         const gamePayload = {
             title,
             description: description || `A ${gameType.toLowerCase()} game.`,
@@ -138,13 +162,11 @@ const CreateGame: React.FC<CreateGameProps> = ({ onGameCreated, onCancel, initia
             settings: settings,
             author_id: userId,
             is_public: isPublic,
-            // Only update author_name if creating new, ideally logic handled by profile triggers but simplistic here
             author_name: 'Teacher' 
         };
 
         let result;
         if (initialGame && initialGame.id) {
-            // Update
             const { data, error } = await supabase
                 .from('games')
                 .update(gamePayload)
@@ -154,7 +176,6 @@ const CreateGame: React.FC<CreateGameProps> = ({ onGameCreated, onCancel, initia
             if(error) throw error;
             result = data;
         } else {
-            // Create
             const { data, error } = await supabase
                 .from('games')
                 .insert([gamePayload])
@@ -164,7 +185,6 @@ const CreateGame: React.FC<CreateGameProps> = ({ onGameCreated, onCancel, initia
              result = data;
         }
 
-        // Transform back to camelCase for frontend use
         const mappedGame: GameModule = {
             id: result.id,
             title: result.title,
@@ -188,7 +208,6 @@ const CreateGame: React.FC<CreateGameProps> = ({ onGameCreated, onCancel, initia
     }
   };
 
-  // ... (Render helpers same as before)
   const renderTypeOption = (type: GameType, label: string) => (
     <div 
       onClick={() => !initialGame && setGameType(type)}
@@ -201,8 +220,6 @@ const CreateGame: React.FC<CreateGameProps> = ({ onGameCreated, onCancel, initia
     </div>
   );
 
-  // ... Editors (Quiz, Matching, Sequence, Cloze, TF, Flashcard) same as previous ...
-  // Re-implementing simplified versions for brevity in XML but retaining full functionality
   const renderQuizEditor = () => {
     const addOption = () => setTempQ({ ...tempQ, options: [...tempQ.options, ''] });
     const removeOption = (idx: number) => { if (tempQ.options.length > 2) setTempQ({ ...tempQ, options: tempQ.options.filter((_, i) => i !== idx), correct: 0 }) };

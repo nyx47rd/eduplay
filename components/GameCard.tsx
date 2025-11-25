@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { GameModule, GameType } from '../types';
 import { Brain, Copy, CheckSquare, Layers, ListOrdered, Type, Edit, Trash2, Play, Heart, Globe, Lock } from 'lucide-react';
@@ -13,23 +14,35 @@ interface GameCardProps {
 
 const GameCard: React.FC<GameCardProps> = ({ game, onPlay, onEdit, onDelete, currentUserId }) => {
   const [likes, setLikes] = useState(game.likes || 0);
-  const [liked, setLiked] = useState(false); // Simple local state for UX, real sync via refetching usually
+  const [liked, setLiked] = useState(false);
   
   const isOwner = currentUserId === game.author_id;
 
   const handleLike = async (e: React.MouseEvent) => {
       e.stopPropagation();
-      if (!currentUserId) return; // Prevent liking if not logged in
+      if (!currentUserId) return; // Must be logged in
+      if (liked) return;
 
-      try {
-          if (!liked) {
-              setLikes(l => l + 1);
-              setLiked(true);
-              await supabase.from('likes').insert({ user_id: currentUserId, game_id: game.id });
-              await supabase.rpc('increment_likes', { row_id: game.id });
+      // Optimistic UI update
+      setLikes(l => l + 1);
+      setLiked(true);
+
+      if (supabase) {
+          try {
+             // Insert into likes table to prevent duplicates via RLS/Constraints
+             const { error: likeError } = await supabase.from('likes').insert({ user_id: currentUserId, game_id: game.id });
+             
+             if (!likeError) {
+                 // Call RPC to increment counter safely
+                 await supabase.rpc('increment_likes', { row_id: game.id });
+             } else {
+                 // Revert if already liked (duplicate key)
+                 setLikes(l => l - 1);
+                 setLiked(false);
+             }
+          } catch (err) {
+              console.error("Error liking game:", err);
           }
-      } catch (err) {
-          // ignore duplicate key error
       }
   };
   
@@ -99,8 +112,11 @@ const GameCard: React.FC<GameCardProps> = ({ game, onPlay, onEdit, onDelete, cur
            <span className="text-xs font-semibold px-2 py-1 bg-slate-700 rounded-full text-gray-300 border border-slate-600">
              {getLabel()}
            </span>
-           <div className="flex items-center text-gray-400 text-xs" onClick={handleLike}>
-               <Heart className={`w-3 h-3 mr-1 ${liked ? 'fill-red-500 text-red-500' : ''}`} /> {likes}
+           <div 
+             className={`flex items-center text-xs transition-colors p-1 rounded ${liked ? 'text-red-400' : 'text-gray-400 hover:text-red-400 hover:bg-slate-700'}`} 
+             onClick={handleLike}
+           >
+               <Heart className={`w-3 h-3 mr-1 ${liked ? 'fill-red-500' : ''}`} /> {likes}
            </div>
         </div>
         <h3 className="font-bold text-white mb-1 line-clamp-1 text-lg">{game.title}</h3>

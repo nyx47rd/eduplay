@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import GameCard from './components/GameCard';
@@ -5,7 +6,7 @@ import CreateGame from './components/CreateGame';
 import GamePlayer from './components/GamePlayer';
 import Auth from './components/Auth';
 import { GameModule, GameType } from './types';
-import { PlusCircle, Search, Loader2 } from 'lucide-react';
+import { PlusCircle, Search, Loader2, AlertTriangle } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from './services/supabase';
 
 const App: React.FC = () => {
@@ -17,60 +18,83 @@ const App: React.FC = () => {
   const [editingGame, setEditingGame] = useState<GameModule | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Demo mode games store
+  const [demoGames, setDemoGames] = useState<GameModule[]>([]);
+
   useEffect(() => {
-    // 1. Check active session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if(!session) setView('community'); // Default to community if not logged in
-      fetchGames(session?.user?.id);
-    });
+    // Check URL query for view (e.g. password reset)
+    const params = new URLSearchParams(window.location.search);
+    const viewParam = params.get('view');
+    if (viewParam === 'reset') {
+        setView('auth'); // Auth component handles the reset flow UI
+    }
 
-    // 2. Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      fetchGames(session?.user?.id);
-      if (session) setView('home');
-      else setView('community');
-    });
+    if (!isSupabaseConfigured()) {
+        setLoading(false);
+        // If no config, we might still want to show a 'demo' session if user clicked 'Demo Mode' in Auth
+        return;
+    }
 
-    return () => subscription.unsubscribe();
+    if (supabase) {
+        // 1. Check active session
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            setSession(session);
+            if(!session) setView('community');
+            fetchGames(session?.user?.id);
+        });
+
+        // 2. Listen for auth changes
+        const {
+            data: { subscription },
+        } = supabase.auth.onAuthStateChange((_event, session) => {
+            setSession(session);
+            fetchGames(session?.user?.id);
+            if (session) setView('home');
+            else setView('community');
+        });
+
+        return () => subscription.unsubscribe();
+    }
   }, []);
 
   const fetchGames = async (userId?: string) => {
       setLoading(true);
       if (!isSupabaseConfigured()) {
+          // Demo Mode: Fetch from local state
+          setMyGames(demoGames.filter(g => g.author_id === userId));
+          setPublicGames(demoGames.filter(g => g.isPublic));
           setLoading(false);
           return; 
       }
 
-      // Fetch Public Games
-      const { data: publicData } = await supabase
-        .from('games')
-        .select('*')
-        .eq('is_public', true)
-        .order('created_at', { ascending: false });
-      
-      if (publicData) {
-          const mappedPublic = publicData.map(mapDbToGame);
-          setPublicGames(mappedPublic);
-      }
-
-      // Fetch My Games (if logged in)
-      if (userId) {
-          const { data: myData } = await supabase
+      if (supabase) {
+        // Fetch Public Games
+        const { data: publicData } = await supabase
             .from('games')
             .select('*')
-            .eq('author_id', userId)
+            .eq('is_public', true)
             .order('created_at', { ascending: false });
-          
-          if (myData) {
-              const mappedMy = myData.map(mapDbToGame);
-              setMyGames(mappedMy);
-          }
-      } else {
-          setMyGames([]);
+        
+        if (publicData) {
+            const mappedPublic = publicData.map(mapDbToGame);
+            setPublicGames(mappedPublic);
+        }
+
+        // Fetch My Games (if logged in)
+        if (userId) {
+            const { data: myData } = await supabase
+                .from('games')
+                .select('*')
+                .eq('author_id', userId)
+                .order('created_at', { ascending: false });
+            
+            if (myData) {
+                const mappedMy = myData.map(mapDbToGame);
+                setMyGames(mappedMy);
+            }
+        } else {
+            setMyGames([]);
+        }
       }
       setLoading(false);
   };
@@ -91,7 +115,28 @@ const App: React.FC = () => {
   });
 
   const handleGameCreated = (newGame: GameModule) => {
-    fetchGames(session?.user?.id); // Re-fetch to sync
+    if (!isSupabaseConfigured()) {
+        // Demo mode local save
+        if (editingGame) {
+            setDemoGames(prev => prev.map(g => g.id === newGame.id ? newGame : g));
+        } else {
+            setDemoGames(prev => [newGame, ...prev]);
+        }
+        // Mock session if not set
+        if (!session) setSession({ user: { id: 'demo-user', email: 'demo@example.com' } });
+        
+        // Refresh local views
+        setTimeout(() => {
+             const allGames = editingGame 
+                ? demoGames.map(g => g.id === newGame.id ? newGame : g) 
+                : [newGame, ...demoGames];
+             
+             setMyGames(allGames.filter(g => g.author_id === 'demo-user'));
+             setPublicGames(allGames.filter(g => g.isPublic));
+        }, 100);
+    } else {
+        fetchGames(session?.user?.id);
+    }
     setView('home');
     setEditingGame(null);
   };
@@ -103,12 +148,21 @@ const App: React.FC = () => {
 
   const handleDeleteGame = async (id: string) => {
       if(window.confirm("Are you sure you want to delete this app?")) {
-          const { error } = await supabase.from('games').delete().eq('id', id);
-          if (!error) {
+          if (!isSupabaseConfigured()) {
+              setDemoGames(demoGames.filter(g => g.id !== id));
               setMyGames(myGames.filter(g => g.id !== id));
               setPublicGames(publicGames.filter(g => g.id !== id));
-          } else {
-              alert("Error deleting game");
+              return;
+          }
+
+          if (supabase) {
+            const { error } = await supabase.from('games').delete().eq('id', id);
+            if (!error) {
+                setMyGames(myGames.filter(g => g.id !== id));
+                setPublicGames(publicGames.filter(g => g.id !== id));
+            } else {
+                alert("Error deleting game");
+            }
           }
       }
   };
@@ -147,17 +201,16 @@ const App: React.FC = () => {
   };
 
   const renderContent = () => {
-    if (!isSupabaseConfigured()) {
-        return (
-            <div className="text-center p-10 bg-red-900/20 border border-red-500 rounded-xl text-white">
-                <h2 className="text-2xl font-bold mb-4">Database Not Configured</h2>
-                <p>Please add your Supabase URL and Key to the environment variables to enable database features.</p>
-                <p className="mt-4 text-sm font-mono bg-slate-900 p-4 rounded text-left inline-block">
-                    process.env.NEXT_PUBLIC_SUPABASE_URL<br/>
-                    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-                </p>
-            </div>
-        )
+    // If not configured and no session (demo or real), show Auth which has Demo option
+    if (!session && view === 'auth') {
+        return <Auth onSuccess={(user) => {
+            setSession(user ? { user } : null); // Handle Demo User object
+            if (user?.id === 'demo-user') {
+                // Initialize demo games if empty
+                if (demoGames.length === 0) setDemoGames([]);
+            }
+            setView('home');
+        }} />;
     }
 
     switch (view) {
@@ -196,8 +249,8 @@ const App: React.FC = () => {
       case 'home':
       default:
         if (!session) {
-            // If somehow here without session, redirect or show auth
-            return <Auth onSuccess={() => setView('home')} />;
+            // Check if we are in public view or need auth
+             return <Auth onSuccess={() => setView('home')} />;
         }
         return (
           <div className="space-y-8 animate-fade-in">
@@ -229,11 +282,18 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col font-sans text-slate-100">
+    <div className="min-h-screen flex flex-col font-sans text-slate-100 bg-slate-900">
       <Navbar currentView={view} onChangeView={(v) => {
           if (v === 'create') setEditingGame(null);
           setView(v);
       }} session={session} />
+      
+      {!isSupabaseConfigured() && (
+          <div className="bg-yellow-600/20 border-b border-yellow-600/50 text-yellow-200 text-xs text-center py-1">
+              Demo Mode: Database not connected. Changes will be lost on refresh.
+          </div>
+      )}
+
       <main className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {renderContent()}
       </main>
