@@ -57,16 +57,16 @@ export const QuizEditor = ({ items, setItems }: { items: QuizItem[], setItems: (
 
     return (
       <div className="space-y-4" onKeyDown={onKeyDown}>
-          <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl">
-            <label className="block text-zinc-400 text-sm mb-2">Soru Metni</label>
+          <div className="bg-slate-800 border border-slate-700 p-4 rounded-xl">
+            <label className="block text-slate-400 text-sm mb-2">Soru Metni</label>
             <textarea
                 rows={2}
                 placeholder="Soru metni..." 
                 value={tempQ.q} 
                 onChange={e => setTempQ({...tempQ, q: e.target.value})} 
-                className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white mb-4 focus:border-white outline-none resize-none break-words" 
+                className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white mb-4 focus:border-indigo-500 outline-none resize-none break-words" 
             />
-            <label className="block text-zinc-400 text-sm mb-2">Seçenekler (Doğru cevabı işaretleyin)</label>
+            <label className="block text-slate-400 text-sm mb-2">Seçenekler (Doğru cevabı işaretleyin)</label>
             <div className="space-y-3">
                 {tempQ.options.map((opt, idx) => (
                     <div key={idx} className="flex items-center gap-3">
@@ -75,33 +75,33 @@ export const QuizEditor = ({ items, setItems }: { items: QuizItem[], setItems: (
                             name="correct" 
                             checked={tempQ.correct === idx} 
                             onChange={() => setTempQ({...tempQ, correct: idx})} 
-                            className="accent-white h-5 w-5 cursor-pointer"
+                            className="accent-indigo-500 h-5 w-5 cursor-pointer"
                         />
                         <input 
                             placeholder={`Seçenek ${idx + 1}`} 
                             value={opt} 
                             onChange={e => {const newOpts = [...tempQ.options]; newOpts[idx] = e.target.value; setTempQ({...tempQ, options: newOpts});}} 
-                            className={`flex-grow bg-black border rounded-lg p-2.5 text-white text-sm transition-colors outline-none ${tempQ.correct === idx ? 'border-zinc-100 ring-1 ring-zinc-100' : 'border-zinc-700 focus:border-zinc-500'}`}
+                            className={`flex-grow bg-slate-900 border rounded-lg p-2.5 text-white text-sm transition-colors outline-none ${tempQ.correct === idx ? 'border-indigo-500 ring-1 ring-indigo-500' : 'border-slate-600 focus:border-slate-400'}`}
                         />
-                        {tempQ.options.length > 2 && <button onClick={() => removeOption(idx)} className="p-2 text-zinc-500 hover:text-red-400"><X size={18} /></button>}
+                        {tempQ.options.length > 2 && <button onClick={() => removeOption(idx)} className="p-2 text-slate-500 hover:text-red-400"><X size={18} /></button>}
                     </div>
                 ))}
             </div>
             
             <div className="flex justify-between items-center mt-4">
                 {tempQ.options.length < 8 && (
-                    <button onClick={addOption} className="text-xs bg-zinc-800 hover:bg-zinc-700 text-white px-3 py-2 rounded flex items-center transition-colors">
+                    <button onClick={addOption} className="text-xs bg-slate-700 hover:bg-slate-600 text-white px-3 py-2 rounded flex items-center transition-colors">
                         <Plus size={14} className="mr-1"/> Seçenek Ekle
                     </button>
                 )}
                 <button 
                     onClick={handleSave}
-                    className="bg-white text-black px-6 py-2 rounded-lg font-bold hover:bg-zinc-200 transition-colors flex items-center"
+                    className="bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-indigo-500 transition-colors flex items-center"
                 >
                     <Check size={18} className="mr-2"/> {editingIndex !== null || items.length > 0 ? 'Soruyu Güncelle' : 'Soruyu Ekle'}
                 </button>
             </div>
-            <p className="text-right text-xs text-zinc-600 mt-2">Kısayol: CTRL + Enter</p>
+            <p className="text-right text-xs text-slate-500 mt-2">Kısayol: CTRL + Enter</p>
           </div>
       </div>
     );
@@ -131,20 +131,20 @@ export const MatchingEditor = ({ pairs, setPairs }: { pairs: MatchingPair[], set
 
     return ( 
       <div className="space-y-4"> 
-          <div className="bg-zinc-900 p-4 rounded-xl border border-zinc-800 grid grid-cols-1 md:grid-cols-2 gap-4" onKeyDown={onKeyDown}> 
-                <input placeholder="Öge A" value={temp.a} onChange={e => setTemp({...temp, a: e.target.value})} className="bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-white outline-none" /> 
-                <input placeholder="Öge B" value={temp.b} onChange={e => setTemp({...temp, b: e.target.value})} className="bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-white outline-none" /> 
-                <button onClick={save} className="md:col-span-2 bg-white text-black py-3 rounded-lg font-bold hover:bg-zinc-200 transition-colors flex items-center justify-center">
+          <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 grid grid-cols-1 md:grid-cols-2 gap-4" onKeyDown={onKeyDown}> 
+                <input placeholder="Öge A" value={temp.a} onChange={e => setTemp({...temp, a: e.target.value})} className="bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:border-indigo-500 outline-none" /> 
+                <input placeholder="Öge B" value={temp.b} onChange={e => setTemp({...temp, b: e.target.value})} className="bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:border-indigo-500 outline-none" /> 
+                <button onClick={save} className="md:col-span-2 bg-indigo-600 text-white py-3 rounded-lg font-bold hover:bg-indigo-500 transition-colors flex items-center justify-center">
                     {editing !== null ? 'Güncelle' : <><Plus size={18} className="mr-2"/> Çift Ekle</>}
                 </button>
           </div> 
           <div className="space-y-2">
               {pairs.map((p, idx) => (
-                  <div key={idx} className="bg-black p-3 rounded-lg border border-zinc-800 flex justify-between items-center group hover:border-zinc-700 transition-colors">
-                      <span className="text-zinc-300 text-sm truncate break-words w-full mr-2">{p.itemA} ↔ {p.itemB}</span>
+                  <div key={idx} className="bg-slate-900 p-3 rounded-lg border border-slate-700 flex justify-between items-center group hover:border-slate-500 transition-colors">
+                      <span className="text-slate-300 text-sm truncate break-words w-full mr-2">{p.itemA} ↔ {p.itemB}</span>
                       <div className="flex space-x-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button className="p-2 text-zinc-400 hover:text-white" onClick={() => { setTemp({a: p.itemA, b: p.itemB}); setEditing(idx); }}><Edit size={16}/></button>
-                          <button className="p-2 text-zinc-400 hover:text-red-400" onClick={() => setPairs(pairs.filter((_, i) => i !== idx))}><Trash2 size={16}/></button>
+                          <button className="p-2 text-slate-400 hover:text-white" onClick={() => { setTemp({a: p.itemA, b: p.itemB}); setEditing(idx); }}><Edit size={16}/></button>
+                          <button className="p-2 text-slate-400 hover:text-red-400" onClick={() => setPairs(pairs.filter((_, i) => i !== idx))}><Trash2 size={16}/></button>
                       </div>
                   </div>
               ))}
@@ -167,21 +167,21 @@ export const SequenceEditor = ({ items, setItems, question, setQuestion }: { ite
 
     return (
         <div className="space-y-4">
-            <input placeholder="Soru / Talimat (örn: Küçükten büyüğe sırala)" value={question} onChange={e => setQuestion(e.target.value)} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-white outline-none" />
+            <input placeholder="Soru / Talimat (örn: Küçükten büyüğe sırala)" value={question} onChange={e => setQuestion(e.target.value)} className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:border-indigo-500 outline-none" />
             <div className="flex gap-2">
                 <input 
                     placeholder="Sıralanacak öge..." 
                     value={temp} 
                     onChange={e => setTemp(e.target.value)} 
-                    className="flex-grow bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-white outline-none" 
+                    className="flex-grow bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:border-indigo-500 outline-none" 
                     onKeyDown={onKeyDown}
                 />
-                <button onClick={add} className="bg-white text-black px-6 rounded-lg font-bold hover:bg-zinc-200 transition-colors">Ekle</button>
+                <button onClick={add} className="bg-indigo-600 text-white px-6 rounded-lg font-bold hover:bg-indigo-500 transition-colors">Ekle</button>
             </div>
             <div className="space-y-2">
                 {items.map((item, idx) => (
-                    <div key={idx} className="flex justify-between items-center bg-zinc-900 p-3 rounded-lg border border-zinc-800">
-                        <span className="text-white break-words"><span className="text-zinc-500 font-bold mr-3">{idx+1}.</span>{item}</span>
+                    <div key={idx} className="flex justify-between items-center bg-slate-900 p-3 rounded-lg border border-slate-700">
+                        <span className="text-white break-words"><span className="text-slate-500 font-bold mr-3">{idx+1}.</span>{item}</span>
                         <Trash2 size={16} className="text-red-400 cursor-pointer flex-shrink-0" onClick={() => setItems(items.filter((_, i) => i !== idx))} />
                     </div>
                 ))}
@@ -206,14 +206,14 @@ export const ScrambleEditor = ({ items, setItems }: { items: ScrambleItem[], set
     return (
         <div className="space-y-4">
              <div className="flex gap-2" onKeyDown={onKeyDown}>
-                 <input placeholder="Kelime" value={temp.w} onChange={e => setTemp({...temp, w: e.target.value})} className="flex-1 bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-white outline-none" />
-                 <input placeholder="İpucu (Opsiyonel)" value={temp.h} onChange={e => setTemp({...temp, h: e.target.value})} className="flex-1 bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-white outline-none" />
-                 <button onClick={add} className="bg-white text-black px-6 rounded-lg font-bold hover:bg-zinc-200 transition-colors">Ekle</button>
+                 <input placeholder="Kelime" value={temp.w} onChange={e => setTemp({...temp, w: e.target.value})} className="flex-1 bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:border-indigo-500 outline-none" />
+                 <input placeholder="İpucu (Opsiyonel)" value={temp.h} onChange={e => setTemp({...temp, h: e.target.value})} className="flex-1 bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:border-indigo-500 outline-none" />
+                 <button onClick={add} className="bg-indigo-600 text-white px-6 rounded-lg font-bold hover:bg-indigo-500 transition-colors">Ekle</button>
              </div>
              <div>
                  {items.map((item, idx) => (
-                     <div key={idx} className="flex justify-between items-center bg-zinc-900 p-3 rounded-lg border border-zinc-800 mb-2">
-                         <span className="text-white break-words">{item.word} <span className="text-zinc-500 text-xs ml-2">({item.hint || 'İpucu yok'})</span></span>
+                     <div key={idx} className="flex justify-between items-center bg-slate-900 p-3 rounded-lg border border-slate-700 mb-2">
+                         <span className="text-white break-words">{item.word} <span className="text-slate-500 text-xs ml-2">({item.hint || 'İpucu yok'})</span></span>
                          <Trash2 size={16} className="text-red-400 cursor-pointer flex-shrink-0" onClick={() => setItems(items.filter((_, i) => i !== idx))} />
                      </div>
                  ))}
@@ -230,24 +230,24 @@ export const ClozeEditor = ({ text, setText }: { text: string, setText: (t: stri
     const matchCount = (text.match(regex) || []).length;
 
     return (
-        <div className="bg-zinc-900 p-5 rounded-xl border border-zinc-800 space-y-4">
+        <div className="bg-slate-800 p-5 rounded-xl border border-slate-700 space-y-4">
              <div>
                 <div className="flex justify-between items-center mb-2">
-                    <p className="text-zinc-400 text-sm">Metni aşağıya yazın. Boşluk olmasını istediğiniz kelimeleri <span className="text-white font-mono bg-zinc-800 px-1 rounded">[köşeli parantez]</span> içine alın.</p>
+                    <p className="text-slate-400 text-sm">Metni aşağıya yazın. Boşluk olmasını istediğiniz kelimeleri <span className="text-white font-mono bg-slate-700 px-1 rounded">[köşeli parantez]</span> içine alın.</p>
                 </div>
                 <textarea 
                     rows={6} 
                     value={text} 
                     onChange={e => setText(e.target.value)} 
-                    className="w-full bg-black border border-zinc-700 rounded-lg p-4 text-white font-mono leading-relaxed focus:border-white outline-none resize-none" 
+                    className="w-full bg-slate-900 border border-slate-600 rounded-lg p-4 text-white font-mono leading-relaxed focus:border-indigo-500 outline-none resize-none" 
                     placeholder="Örnek: Türkiye'nin başkenti [Ankara]'dır."
                 />
              </div>
              
              {text && (
-                 <div className="bg-black/50 p-4 rounded-lg border border-zinc-800">
-                    <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2 flex items-center"><Eye size={12} className="mr-1"/> Önizleme</h4>
-                    <p className="text-zinc-300 leading-relaxed break-words">
+                 <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-700">
+                    <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center"><Eye size={12} className="mr-1"/> Önizleme</h4>
+                    <p className="text-slate-300 leading-relaxed break-words">
                         {parts.map((part, i) => {
                             // Even indices are normal text, odd indices are captures from regex (the answers)
                             if (i % 2 === 0) return <span key={i}>{part}</span>;
@@ -259,7 +259,7 @@ export const ClozeEditor = ({ text, setText }: { text: string, setText: (t: stri
              )}
              
              <div className="flex justify-end">
-                 <button className="bg-zinc-800 text-zinc-300 px-4 py-2 rounded-lg text-sm cursor-default flex items-center border border-zinc-700">
+                 <button className="bg-slate-800 text-slate-300 px-4 py-2 rounded-lg text-sm cursor-default flex items-center border border-slate-700">
                     <Check size={14} className="mr-2 text-emerald-500"/>
                     {matchCount} Boşluk Tespit Edildi
                  </button>

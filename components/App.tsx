@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import GameCard from './components/GameCard';
-import CreateGame from './components/CreateGame';
+// Fix: Use named import for CreateGame
+import { CreateGame } from './components/CreateGame';
 import GamePlayer from './components/GamePlayer';
 import Auth from './components/Auth';
 import Settings from './components/Settings';

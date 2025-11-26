@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase, isSupabaseConfigured } from '../services/supabase';
 import { GameModule, GameType } from '../types';
 
-const ITEMS_PER_PAGE = 8; 
+const ITEMS_PER_PAGE = 12; // Increased to show more items
 
 export const useGames = (userId?: string) => {
     const [publicGames, setPublicGames] = useState<GameModule[]>([]);
@@ -52,6 +52,9 @@ export const useGames = (userId?: string) => {
     };
 
     const fetchGames = useCallback(async (page = 0, query = '', reset = false) => {
+        // If query is present, we might want to reset the list to avoid duplicates mixed with search results
+        // But the pagination logic handles append. 
+        
         if (!isSupabaseConfigured()) {
             const localData = localStorage.getItem('demo_games');
             const demoGames: GameModule[] = localData ? JSON.parse(localData) : [];
@@ -65,12 +68,15 @@ export const useGames = (userId?: string) => {
                 );
             }
 
+            // Sort by newest for visibility
+            filtered.sort((a, b) => (new Date(b.id.split('-')[1] || 0).getTime() - new Date(a.id.split('-')[1] || 0).getTime()));
+
             const start = page * ITEMS_PER_PAGE;
             const end = start + ITEMS_PER_PAGE;
             const slice = filtered.slice(start, end);
 
             if (reset) {
-                setMyGames(filtered.filter(g => g.author_id === (userId || 'demo-user')));
+                setMyGames(demoGames.filter(g => g.author_id === (userId || 'demo-user')));
                 setPublicGames(slice.filter(g => g.isPublic));
             } else {
                 setPublicGames(prev => [...prev, ...slice.filter(g => g.isPublic)]);
@@ -99,8 +105,8 @@ export const useGames = (userId?: string) => {
                 queryBuilder = queryBuilder.or(`title.ilike.%${query}%,description.ilike.%${query}%`)
                                            .order('created_at', { ascending: false });
             } else {
-                queryBuilder = queryBuilder.order('plays', { ascending: false })
-                                           .order('created_at', { ascending: false });
+                // CHANGED: Default sort to created_at DESC so new games appear immediately in Community
+                queryBuilder = queryBuilder.order('created_at', { ascending: false });
             }
 
             const { data: publicData, error: pubError } = await queryBuilder;
@@ -112,14 +118,6 @@ export const useGames = (userId?: string) => {
                     ...mapDbToGame(g),
                     author: g.profiles?.username || g.author_name || 'Bilinmeyen'
                 }));
-
-                // Client-side shuffle for "Mixed" discovery (only if not searching)
-                if (!query && mappedGames.length > 0) {
-                     for (let i = mappedGames.length - 1; i > 0; i--) {
-                        const j = Math.floor(Math.random() * (i + 1));
-                        [mappedGames[i], mappedGames[j]] = [mappedGames[j], mappedGames[i]];
-                    }
-                }
 
                 if (reset) {
                     setPublicGames(mappedGames);
@@ -199,7 +197,19 @@ export const useGames = (userId?: string) => {
             }
 
             localStorage.setItem('demo_games', JSON.stringify(demoGames));
-            setMyGames(demoGames.filter(g => g.author_id === (userId || 'demo-user')));
+            if (true) { // Always refresh for demo mode to show updates immediately
+                 // This quick hack triggers a re-fetch implicitly via dependency or we can manually update state
+                 setMyGames(demoGames.filter(g => g.author_id === (userId || 'demo-user')));
+                 setPublicGames(prev => {
+                     // If public, add to top if not exists
+                     if (newGame.isPublic) {
+                         const exists = prev.find(p => p.id === newGame.id);
+                         if (exists) return prev.map(p => p.id === newGame.id ? newGame : p);
+                         return [newGame, ...prev];
+                     }
+                     return prev.filter(p => p.id !== newGame.id);
+                 });
+            }
             return newGame;
         }
 
@@ -233,6 +243,9 @@ export const useGames = (userId?: string) => {
             if (error) throw error;
             result = data;
         }
+
+        // Optimistic update or refresh
+        fetchGames(0, searchQuery, true);
 
         return mapDbToGame(result);
     };
