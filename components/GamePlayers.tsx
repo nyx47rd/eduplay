@@ -10,7 +10,6 @@ export const QuizPlayer = ({ data, onFinish, randomize }: { data: { items: QuizI
   const [showResult, setShowResult] = useState(false);
 
   const questions = useMemo(() => {
-     // Always randomize per requirement, ignoring settings if needed, but let's keep prop flexibility
      return [...data.items].sort(() => Math.random() - 0.5);
   }, [data]);
 
@@ -40,37 +39,39 @@ export const QuizPlayer = ({ data, onFinish, randomize }: { data: { items: QuizI
   };
 
   return (
-    <div className="max-w-3xl mx-auto bg-slate-800 rounded-xl shadow-lg p-6 border border-slate-700 mt-4 animate-fade-in">
-      <div className="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
-        <span className="text-sm font-semibold text-gray-400">Soru {currentIdx + 1} / {questions.length}</span>
-        <span className="text-sm font-bold text-indigo-400">Puan: {score}</span>
+    <div className="max-w-3xl mx-auto bg-zinc-900 rounded-2xl shadow-xl p-6 md:p-8 border border-zinc-800 mt-4 animate-fade-in">
+      <div className="flex justify-between items-center mb-6 border-b border-zinc-800 pb-4">
+        <span className="text-xs font-bold uppercase tracking-widest text-zinc-500">Soru {currentIdx + 1} / {questions.length}</span>
+        <span className="text-sm font-bold text-white bg-zinc-800 px-3 py-1 rounded-full">Puan: {score}</span>
       </div>
-      <h2 className="text-xl font-bold text-white mb-6">{currentQ.question}</h2>
+      <h2 className="text-xl md:text-2xl font-bold text-white mb-8 leading-snug break-words">{currentQ.question}</h2>
       
       <div className="grid grid-cols-1 gap-3">
         {shuffledOptions.map((option, idx) => {
-           let btnClass = "w-full p-4 text-left border rounded-lg transition-all text-white font-medium ";
+           let btnClass = "w-full p-4 text-left border rounded-xl transition-all text-white font-medium break-words ";
            if (showResult) {
-             if (option === currentQ.correctAnswer) btnClass += "bg-emerald-900/50 border-emerald-500 text-emerald-200";
-             else if (option === selectedOption) btnClass += "bg-red-900/50 border-red-500 text-red-200";
-             else btnClass += "bg-slate-700/50 border-slate-600 text-gray-500 opacity-50";
+             if (option === currentQ.correctAnswer) btnClass += "bg-emerald-950/50 border-emerald-500 text-emerald-200";
+             else if (option === selectedOption) btnClass += "bg-red-950/50 border-red-500 text-red-200";
+             else btnClass += "bg-zinc-800/50 border-zinc-700 text-zinc-500 opacity-50";
            } else {
-             btnClass += "bg-slate-700 border-slate-600 hover:bg-indigo-900/30 hover:border-indigo-500";
+             btnClass += "bg-black border-zinc-700 hover:bg-zinc-800 hover:border-zinc-500";
            }
 
            return (
              <button key={idx} onClick={() => handleAnswer(option)} disabled={showResult} className={btnClass}>
-               {option}
-               {showResult && option === currentQ.correctAnswer && <CheckCircle className="inline float-right h-5 w-5 text-emerald-500" />}
-               {showResult && option === selectedOption && option !== currentQ.correctAnswer && <XCircle className="inline float-right h-5 w-5 text-red-500" />}
+               <div className="flex justify-between items-center">
+                   <span>{option}</span>
+                   {showResult && option === currentQ.correctAnswer && <CheckCircle className="h-5 w-5 text-emerald-500 flex-shrink-0 ml-2" />}
+                   {showResult && option === selectedOption && option !== currentQ.correctAnswer && <XCircle className="h-5 w-5 text-red-500 flex-shrink-0 ml-2" />}
+               </div>
              </button>
            )
         })}
       </div>
 
       {showResult && (
-        <div className="mt-6 animate-fade-in">
-           <button onClick={nextQuestion} className="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-500 transition-colors">
+        <div className="mt-8 animate-fade-in">
+           <button onClick={nextQuestion} className="w-full bg-white text-black py-4 rounded-xl font-bold hover:bg-zinc-200 transition-colors shadow-lg">
              {currentIdx === questions.length - 1 ? "Testi Bitir" : "Sonraki Soru"}
            </button>
         </div>
@@ -88,7 +89,6 @@ export const MatchingPlayer = ({ data, onFinish }: { data: { pairs: MatchingPair
   const [mistakes, setMistakes] = useState(0);
 
   useEffect(() => {
-    // Randomize both sides always
     const left = data.pairs.map(p => ({ id: `L-${p.id}`, text: p.itemA, pairId: p.id }));
     const right = data.pairs.map(p => ({ id: `R-${p.id}`, text: p.itemB, pairId: p.id }));
     
@@ -126,11 +126,11 @@ export const MatchingPlayer = ({ data, onFinish }: { data: { pairs: MatchingPair
 
   return (
     <div className="max-w-4xl mx-auto mt-4 animate-fade-in">
-      <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 mb-4 text-center">
-         <p className="text-indigo-300 font-medium">Soldaki ögeyi seçip sağdaki eşini bul.</p>
-         <p className="text-sm text-gray-500 mt-1">Hatalar: {mistakes}</p>
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 mb-6 text-center">
+         <p className="text-white font-medium">Soldaki ögeyi seçip sağdaki eşini bul.</p>
+         <p className="text-sm text-zinc-500 mt-2">Hatalar: {mistakes}</p>
       </div>
-      <div className="grid grid-cols-2 gap-8">
+      <div className="grid grid-cols-2 gap-4 md:gap-8">
         <div className="space-y-3">
           {leftItems.map(item => {
             const isMatched = matchedIds.has(item.pairId);
@@ -140,9 +140,9 @@ export const MatchingPlayer = ({ data, onFinish }: { data: { pairs: MatchingPair
                 key={item.id}
                 onClick={() => handleLeftClick(item.id)}
                 disabled={isMatched}
-                className={`w-full p-4 rounded-lg shadow-sm border text-sm md:text-base font-medium transition-all
+                className={`w-full p-4 rounded-xl shadow-sm border text-sm md:text-base font-medium transition-all break-words
                   ${isMatched ? 'opacity-0 pointer-events-none' : 'opacity-100'}
-                  ${isSelected ? 'bg-indigo-600 text-white border-indigo-500 transform scale-105' : 'bg-slate-800 text-gray-200 border-slate-700 hover:bg-slate-700'}
+                  ${isSelected ? 'bg-white text-black border-white transform scale-105' : 'bg-zinc-900 text-zinc-300 border-zinc-800 hover:bg-zinc-800 hover:text-white'}
                 `}
               >
                 {item.text}
@@ -158,9 +158,9 @@ export const MatchingPlayer = ({ data, onFinish }: { data: { pairs: MatchingPair
                 key={item.id}
                 onClick={() => handleRightClick(item)}
                 disabled={isMatched}
-                 className={`w-full p-4 rounded-lg shadow-sm border text-sm md:text-base font-medium transition-all
+                 className={`w-full p-4 rounded-xl shadow-sm border text-sm md:text-base font-medium transition-all break-words
                   ${isMatched ? 'opacity-0 pointer-events-none' : 'opacity-100'}
-                  bg-slate-800 text-gray-200 border-slate-700 hover:bg-slate-700
+                  bg-zinc-900 text-zinc-300 border-zinc-800 hover:bg-zinc-800 hover:text-white
                 `}
               >
                 {item.text}
@@ -179,7 +179,6 @@ export const TrueFalsePlayer = ({ data, onFinish }: { data: { items: TrueFalseIt
     const [score, setScore] = useState(0);
     const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null);
 
-    // Shuffle only on mount
     const items = useMemo(() => [...data.items].sort(() => Math.random() - 0.5), [data]);
     const item = items[currentIdx];
 
@@ -199,19 +198,19 @@ export const TrueFalsePlayer = ({ data, onFinish }: { data: { items: TrueFalseIt
     };
 
     return (
-        <div className="max-w-xl mx-auto bg-slate-800 rounded-xl shadow-lg p-8 text-center border border-slate-700 mt-4 animate-fade-in">
-             <div className="mb-8">
-                 <span className="text-xs uppercase tracking-wider text-gray-500 font-bold">İfade {currentIdx + 1} / {items.length}</span>
-                 <h2 className="text-2xl font-bold text-white mt-4 leading-relaxed">{item.statement}</h2>
+        <div className="max-w-xl mx-auto bg-zinc-900 rounded-2xl shadow-xl p-8 text-center border border-zinc-800 mt-4 animate-fade-in">
+             <div className="mb-10">
+                 <span className="text-xs uppercase tracking-widest text-zinc-500 font-bold block mb-4">İfade {currentIdx + 1} / {items.length}</span>
+                 <h2 className="text-2xl font-bold text-white leading-relaxed break-words">{item.statement}</h2>
              </div>
              {feedback ? (
-                 <div className={`p-4 rounded-lg mb-6 ${feedback === 'correct' ? 'bg-emerald-900/50 text-emerald-300' : 'bg-red-900/50 text-red-300'}`}>
-                     {feedback === 'correct' ? <div className="font-bold">Doğru!</div> : <div><div className="font-bold">Yanlış</div>{item.correction && <p className="text-sm mt-2">{item.correction}</p>}</div>}
+                 <div className={`p-6 rounded-xl mb-6 border ${feedback === 'correct' ? 'bg-emerald-950/30 border-emerald-900 text-emerald-400' : 'bg-red-950/30 border-red-900 text-red-400'}`}>
+                     {feedback === 'correct' ? <div className="font-bold text-lg">Doğru!</div> : <div><div className="font-bold text-lg">Yanlış</div>{item.correction && <p className="text-sm mt-2 text-zinc-400">{item.correction}</p>}</div>}
                  </div>
              ) : (
-                 <div className="grid grid-cols-2 gap-4">
-                    <button onClick={() => handleGuess(true)} className="p-6 rounded-xl border-2 border-emerald-600 text-emerald-400 hover:bg-emerald-600 hover:text-white transition-all font-bold text-xl">DOĞRU</button>
-                    <button onClick={() => handleGuess(false)} className="p-6 rounded-xl border-2 border-red-600 text-red-400 hover:bg-red-600 hover:text-white transition-all font-bold text-xl">YANLIŞ</button>
+                 <div className="grid grid-cols-2 gap-6">
+                    <button onClick={() => handleGuess(true)} className="p-6 rounded-2xl bg-black border border-zinc-700 hover:border-emerald-500 hover:text-emerald-500 text-zinc-300 transition-all font-bold text-xl">DOĞRU</button>
+                    <button onClick={() => handleGuess(false)} className="p-6 rounded-2xl bg-black border border-zinc-700 hover:border-red-500 hover:text-red-500 text-zinc-300 transition-all font-bold text-xl">YANLIŞ</button>
                  </div>
              )}
         </div>
@@ -237,17 +236,17 @@ export const FlashcardPlayer = ({ data, onFinish }: { data: { items: FlashcardIt
     };
 
     return (
-        <div className="max-w-2xl mx-auto flex flex-col items-center mt-4 animate-fade-in">
-            <div className="w-full text-center mb-4 text-gray-400">Kart {currentIdx + 1} / {items.length}</div>
+        <div className="max-w-2xl mx-auto flex flex-col items-center mt-4 animate-fade-in px-4">
+            <div className="w-full text-center mb-6 text-zinc-500 text-sm font-bold tracking-widest">KART {currentIdx + 1} / {items.length}</div>
             <div className="group w-full h-80 perspective-1000 cursor-pointer" onClick={() => setIsFlipped(!isFlipped)} style={{ perspective: '1000px' }}>
-                <div className={`relative w-full h-full text-center transition-transform duration-500 transform-style-3d shadow-xl rounded-2xl ${isFlipped ? 'rotate-y-180' : ''}`} style={{ transformStyle: 'preserve-3d', transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}>
-                    <div className="absolute w-full h-full backface-hidden bg-slate-800 rounded-2xl flex items-center justify-center p-8 border border-slate-700" style={{ backfaceVisibility: 'hidden' }}><h2 className="text-3xl font-bold text-white">{item.front}</h2><span className="absolute bottom-4 text-xs text-gray-500">Çevirmek için tıkla</span></div>
-                    <div className="absolute w-full h-full backface-hidden bg-indigo-700 rounded-2xl flex items-center justify-center p-8 text-white rotate-y-180" style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}><p className="text-xl font-medium leading-relaxed">{item.back}</p></div>
+                <div className={`relative w-full h-full text-center transition-transform duration-500 transform-style-3d shadow-2xl rounded-3xl ${isFlipped ? 'rotate-y-180' : ''}`} style={{ transformStyle: 'preserve-3d', transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}>
+                    <div className="absolute w-full h-full backface-hidden bg-zinc-900 rounded-3xl flex items-center justify-center p-8 border border-zinc-800" style={{ backfaceVisibility: 'hidden' }}><h2 className="text-3xl font-bold text-white break-words">{item.front}</h2><span className="absolute bottom-6 text-xs text-zinc-600 uppercase tracking-widest">Çevir</span></div>
+                    <div className="absolute w-full h-full backface-hidden bg-white rounded-3xl flex items-center justify-center p-8 text-black rotate-y-180" style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}><p className="text-xl font-medium leading-relaxed break-words">{item.back}</p></div>
                 </div>
             </div>
-            <div className="flex space-x-6 mt-8">
-                <button onClick={prevCard} disabled={currentIdx === 0} className="p-3 rounded-full bg-slate-800 shadow hover:bg-slate-700 disabled:opacity-50 text-indigo-400 border border-slate-700"><ChevronLeft className="w-8 h-8" /></button>
-                <button onClick={nextCard} className="p-3 rounded-full bg-slate-800 shadow hover:bg-slate-700 text-indigo-400 border border-slate-700">{currentIdx === items.length - 1 ? <CheckCircle className="w-8 h-8" /> : <ChevronRight className="w-8 h-8" />}</button>
+            <div className="flex space-x-6 mt-10">
+                <button onClick={prevCard} disabled={currentIdx === 0} className="p-4 rounded-full bg-zinc-900 shadow-lg hover:bg-zinc-800 disabled:opacity-30 text-white border border-zinc-800 transition-colors"><ChevronLeft className="w-6 h-6" /></button>
+                <button onClick={nextCard} className="p-4 rounded-full bg-zinc-900 shadow-lg hover:bg-zinc-800 text-white border border-zinc-800 transition-colors">{currentIdx === items.length - 1 ? <CheckCircle className="w-6 h-6" /> : <ChevronRight className="w-6 h-6" />}</button>
             </div>
         </div>
     );
@@ -279,10 +278,22 @@ export const SequencePlayer = ({ data, onFinish }: { data: { items: SequenceItem
 
     return (
         <div className="max-w-xl mx-auto mt-4 animate-fade-in">
-            <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 mb-6">
-                <h3 className="text-lg font-bold text-white mb-4 text-center">{data.question || "Doğru sıraya dizin"}</h3>
-                <div className="space-y-2">{items.map((item, idx) => (<div key={item.id} className={`p-4 rounded-lg flex items-center justify-between border ${checked ? (item.order === idx ? 'bg-emerald-900/40 border-emerald-500' : 'bg-red-900/40 border-red-500') : 'bg-slate-700 border-slate-600'}`}><span className="text-white font-medium">{item.text}</span>{!checked && (<div className="flex flex-col space-y-1 ml-4"><button onClick={() => moveItem(idx, 'up')} disabled={idx === 0} className="p-1 hover:bg-slate-600 rounded disabled:opacity-30 text-gray-300"><ChevronLeft className="w-4 h-4 rotate-90" /></button><button onClick={() => moveItem(idx, 'down')} disabled={idx === items.length - 1} className="p-1 hover:bg-slate-600 rounded disabled:opacity-30 text-gray-300"><ChevronLeft className="w-4 h-4 -rotate-90" /></button></div>)}</div>))}</div>
-                {!checked ? <button onClick={checkOrder} className="w-full mt-6 bg-indigo-600 text-white py-3 rounded-lg font-bold hover:bg-indigo-500">Kontrol Et</button> : <button onClick={() => setChecked(false)} className="w-full mt-6 bg-slate-600 text-white py-3 rounded-lg font-bold hover:bg-slate-500">Tekrar Dene</button>}
+            <div className="bg-zinc-900 p-8 rounded-2xl border border-zinc-800 mb-6">
+                <h3 className="text-xl font-bold text-white mb-6 text-center break-words">{data.question || "Doğru sıraya dizin"}</h3>
+                <div className="space-y-3">
+                    {items.map((item, idx) => (
+                        <div key={item.id} className={`p-4 rounded-xl flex items-center justify-between border transition-colors ${checked ? (item.order === idx ? 'bg-emerald-950/30 border-emerald-900 text-emerald-100' : 'bg-red-950/30 border-red-900 text-red-100') : 'bg-black border-zinc-800'}`}>
+                            <span className="text-white font-medium break-words pr-2">{item.text}</span>
+                            {!checked && (
+                                <div className="flex flex-col space-y-1 ml-4 flex-shrink-0">
+                                    <button onClick={() => moveItem(idx, 'up')} disabled={idx === 0} className="p-1 hover:bg-zinc-800 rounded disabled:opacity-20 text-zinc-400"><ChevronLeft className="w-4 h-4 rotate-90" /></button>
+                                    <button onClick={() => moveItem(idx, 'down')} disabled={idx === items.length - 1} className="p-1 hover:bg-zinc-800 rounded disabled:opacity-20 text-zinc-400"><ChevronLeft className="w-4 h-4 -rotate-90" /></button>
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+                {!checked ? <button onClick={checkOrder} className="w-full mt-8 bg-white text-black py-4 rounded-xl font-bold hover:bg-zinc-200 shadow-lg">Kontrol Et</button> : <button onClick={() => setChecked(false)} className="w-full mt-8 bg-zinc-800 text-white py-4 rounded-xl font-bold hover:bg-zinc-700">Tekrar Dene</button>}
             </div>
         </div>
     );
@@ -305,10 +316,34 @@ export const ClozePlayer = ({ data, onFinish, caseSensitive }: { data: { data: C
     };
 
     return (
-        <div className="max-w-2xl mx-auto bg-slate-800 p-8 rounded-xl border border-slate-700 mt-4 animate-fade-in">
-            <h3 className="text-xl font-bold text-white mb-6 text-center">Boşlukları Doldurun</h3>
-            <div className="text-lg leading-loose text-gray-200">{data.data.textParts.map((part, index) => (<React.Fragment key={index}><span>{part}</span>{index < data.data.answers.length && (<span className="inline-block mx-1"><input type="text" value={inputs[index]} onChange={(e) => { if (checked) setChecked(false); const newInputs = [...inputs]; newInputs[index] = e.target.value; setInputs(newInputs); }} disabled={checked && (caseSensitive ? inputs[index].trim() === data.data.answers[index] : inputs[index].trim().toLowerCase() === data.data.answers[index].toLowerCase())} className={`w-32 bg-slate-900 border-b-2 px-2 py-1 outline-none text-center transition-colors ${checked ? ((caseSensitive ? inputs[index].trim() === data.data.answers[index] : inputs[index].trim().toLowerCase() === data.data.answers[index].toLowerCase()) ? 'border-emerald-500 text-emerald-400' : 'border-red-500 text-red-400') : 'border-slate-500 text-white focus:border-indigo-500'}`} /></span>)}</React.Fragment>))}</div>
-            <div className="mt-8"><button onClick={handleCheck} className="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold hover:bg-indigo-500 transition-colors">Cevapları Kontrol Et</button></div>
+        <div className="max-w-3xl mx-auto bg-zinc-900 p-8 md:p-10 rounded-2xl border border-zinc-800 mt-4 animate-fade-in shadow-xl">
+            <h3 className="text-2xl font-bold text-white mb-8 text-center">Boşlukları Doldurun</h3>
+            <div className="text-lg md:text-xl leading-loose text-zinc-200 font-light">
+                {data.data.textParts.map((part, index) => (
+                    <React.Fragment key={index}>
+                        <span className="break-words">{part}</span>
+                        {index < data.data.answers.length && (
+                            <span className="inline-block mx-1">
+                                <input 
+                                    type="text" 
+                                    value={inputs[index]} 
+                                    onChange={(e) => { if (checked) setChecked(false); const newInputs = [...inputs]; newInputs[index] = e.target.value; setInputs(newInputs); }} 
+                                    disabled={checked && (caseSensitive ? inputs[index].trim() === data.data.answers[index] : inputs[index].trim().toLowerCase() === data.data.answers[index].toLowerCase())} 
+                                    className={`min-w-[80px] w-auto max-w-[150px] bg-transparent border-b-2 px-1 py-0.5 outline-none text-center transition-colors font-medium
+                                        ${checked 
+                                            ? ((caseSensitive ? inputs[index].trim() === data.data.answers[index] : inputs[index].trim().toLowerCase() === data.data.answers[index].toLowerCase()) 
+                                                ? 'border-emerald-500 text-emerald-400' 
+                                                : 'border-red-500 text-red-400') 
+                                            : 'border-zinc-500 text-white focus:border-white'}`} 
+                                />
+                            </span>
+                        )}
+                    </React.Fragment>
+                ))}
+            </div>
+            <div className="mt-10">
+                <button onClick={handleCheck} className="w-full bg-white text-black py-4 rounded-xl font-bold hover:bg-zinc-200 transition-colors shadow-lg">Cevapları Kontrol Et</button>
+            </div>
         </div>
     );
 };
@@ -344,22 +379,22 @@ export const ScramblePlayer = ({ data, onFinish }: { data: { items: ScrambleItem
     };
 
     return (
-        <div className="max-w-md mx-auto bg-slate-800 p-8 rounded-xl border border-slate-700 mt-4 text-center">
+        <div className="max-w-md mx-auto bg-zinc-900 p-8 rounded-2xl border border-zinc-800 mt-4 text-center shadow-xl">
             <h3 className="text-xl font-bold text-white mb-2">Kelime Avı</h3>
-            <p className="text-gray-400 mb-6">Harfleri düzelterek kelimeyi bul</p>
+            <p className="text-zinc-500 mb-8">Harfleri düzelterek kelimeyi bul</p>
             
-            <div className="text-4xl font-mono tracking-widest text-indigo-400 mb-8">{scrambledWord.toUpperCase()}</div>
+            <div className="text-4xl md:text-5xl font-mono tracking-[0.2em] text-white mb-8 break-all">{scrambledWord.toUpperCase()}</div>
             
-            {item.hint && <div className="text-sm text-yellow-500/80 mb-4 bg-yellow-900/20 p-2 rounded">İpucu: {item.hint}</div>}
+            {item.hint && <div className="text-sm text-yellow-500/90 mb-6 bg-yellow-900/10 border border-yellow-900/20 p-2 rounded inline-block px-4">İpucu: {item.hint}</div>}
 
             <input 
                 value={userInput}
                 onChange={e => { setUserInput(e.target.value); setFeedback(null); }}
-                className={`w-full bg-slate-900 border p-3 rounded text-center text-xl text-white mb-4 ${feedback === 'correct' ? 'border-emerald-500' : feedback === 'wrong' ? 'border-red-500' : 'border-slate-600'}`}
+                className={`w-full bg-black border p-4 rounded-xl text-center text-xl text-white mb-6 outline-none transition-all ${feedback === 'correct' ? 'border-emerald-500 ring-1 ring-emerald-500' : feedback === 'wrong' ? 'border-red-500 ring-1 ring-red-500' : 'border-zinc-700 focus:border-white'}`}
                 placeholder="Kelimeyi yazın..."
             />
             
-            <button onClick={handleCheck} className="w-full bg-indigo-600 text-white py-3 rounded font-bold hover:bg-indigo-500">Kontrol Et</button>
+            <button onClick={handleCheck} className="w-full bg-white text-black py-4 rounded-xl font-bold hover:bg-zinc-200 transition-colors">Kontrol Et</button>
         </div>
     );
 };

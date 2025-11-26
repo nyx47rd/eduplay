@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase, isSupabaseConfigured } from '../services/supabase';
 import { GameModule, GameType } from '../types';
 
-const ITEMS_PER_PAGE = 8; // Increased slightly for better grid fill
+const ITEMS_PER_PAGE = 8; 
 
 export const useGames = (userId?: string) => {
     const [publicGames, setPublicGames] = useState<GameModule[]>([]);
@@ -27,10 +27,9 @@ export const useGames = (userId?: string) => {
         isPublic: dbGame.is_public
     });
 
-    // Fetch User Profile
     const fetchProfile = useCallback(async () => {
         if (!userId || !supabase) return;
-        const { data, error } = await supabase
+        const { data } = await supabase
             .from('profiles')
             .select('username')
             .eq('id', userId)
@@ -53,7 +52,6 @@ export const useGames = (userId?: string) => {
     };
 
     const fetchGames = useCallback(async (page = 0, query = '', reset = false) => {
-        // DEMO MODE logic
         if (!isSupabaseConfigured()) {
             const localData = localStorage.getItem('demo_games');
             const demoGames: GameModule[] = localData ? JSON.parse(localData) : [];
@@ -91,22 +89,16 @@ export const useGames = (userId?: string) => {
             const from = page * ITEMS_PER_PAGE;
             const to = from + ITEMS_PER_PAGE - 1;
 
-            // Fetch Public Games with Author Username lookup
             let queryBuilder = supabase
                 .from('games')
                 .select('*, profiles(username)')
                 .eq('is_public', true)
                 .range(from, to);
 
-            // Algorithm: 
-            // If searching, order by text match (default Supabase behavior + date).
-            // If NOT searching (Default view), order by Plays (Popularity) to show best content,
-            // but we will shuffle client-side to satisfy "mixed" requirement.
             if (query) {
                 queryBuilder = queryBuilder.or(`title.ilike.%${query}%,description.ilike.%${query}%`)
                                            .order('created_at', { ascending: false });
             } else {
-                // Primary sort: Most played. Secondary: Newest.
                 queryBuilder = queryBuilder.order('plays', { ascending: false })
                                            .order('created_at', { ascending: false });
             }
@@ -121,7 +113,7 @@ export const useGames = (userId?: string) => {
                     author: g.profiles?.username || g.author_name || 'Bilinmeyen'
                 }));
 
-                // Client-side shuffle for "Mixed" discovery feel on the main page (only if not searching)
+                // Client-side shuffle for "Mixed" discovery (only if not searching)
                 if (!query && mappedGames.length > 0) {
                      for (let i = mappedGames.length - 1; i > 0; i--) {
                         const j = Math.floor(Math.random() * (i + 1));
@@ -271,10 +263,7 @@ export const useGames = (userId?: string) => {
             setMyGames([]);
             return;
         }
-
         await supabase.from('games').delete().eq('author_id', userId);
-        // Cascading deletes on Auth user removal is handled by DB usually, 
-        // but here we just clear data as requested
     };
 
     return {
