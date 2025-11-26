@@ -56,7 +56,7 @@ export type GameData =
   | { type: GameType.MATCHING; pairs: MatchingPair[] }
   | { type: GameType.TRUE_FALSE; items: TrueFalseItem[] }
   | { type: GameType.FLASHCARD; items: FlashcardItem[] }
-  | { type: GameType.SEQUENCE; items: SequenceItem[] }
+  | { type: GameType.SEQUENCE; items: SequenceItem[]; question?: string }
   | { type: GameType.CLOZE; data: ClozeItem }; 
 
 export interface GameModule {

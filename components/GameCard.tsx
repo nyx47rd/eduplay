@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { GameModule, GameType } from '../types';
 import { Brain, Copy, CheckSquare, Layers, ListOrdered, Type, Edit, Trash2, Play, Heart, Globe, Lock } from 'lucide-react';
@@ -23,52 +22,66 @@ const GameCard: React.FC<GameCardProps> = ({ game, onPlay, onEdit, onDelete, cur
       setLikes(game.likes || 0);
   }, [game.likes]);
 
+  // Check local storage for anonymous likes or if Supabase check hasn't run yet
+  useEffect(() => {
+      const checkLikeStatus = async () => {
+          if (currentUserId && supabase) {
+              // Check DB for logged in user
+              const { data } = await supabase.from('likes').select('id').match({ user_id: currentUserId, game_id: game.id }).single();
+              if (data) setLiked(true);
+          } else {
+              // Check local storage for anonymous user
+              const localLikes = JSON.parse(localStorage.getItem('liked_games') || '[]');
+              if (localLikes.includes(game.id)) {
+                  setLiked(true);
+              }
+          }
+      };
+      checkLikeStatus();
+  }, [currentUserId, game.id]);
+
   const handleLike = async (e: React.MouseEvent) => {
       e.stopPropagation();
-      if (!currentUserId && isSupabaseConfigured()) return; // Must be logged in if Supabase
       if (liked) return;
 
       // Optimistic UI update
       setLikes(l => l + 1);
       setLiked(true);
 
+      // Local Storage Update (for everyone, serves as a cache/check for anonymous)
+      const localLikes = JSON.parse(localStorage.getItem('liked_games') || '[]');
+      if (!localLikes.includes(game.id)) {
+          localLikes.push(game.id);
+          localStorage.setItem('liked_games', JSON.stringify(localLikes));
+      }
+
       if (isSupabaseConfigured() && supabase) {
           try {
-             // 1. Insert into likes table
-             const { error: likeError } = await supabase.from('likes').insert({ user_id: currentUserId, game_id: game.id });
+             if (currentUserId) {
+                 // 1. Logged in: Insert into likes table to enforce uniqueness per user in DB
+                 const { error: likeError } = await supabase.from('likes').insert({ user_id: currentUserId, game_id: game.id });
+                 if (likeError && likeError.code !== '23505') { // 23505 is duplicate key
+                     console.warn("Like insert error", likeError);
+                 }
+             }
+
+             // 2. Increment the counter on the game table
+             // This works for both logged in (after insert) and anonymous (direct increment)
+             // Assuming the RPC function is set to 'security definer' or RLS allows update
+             const { error: rpcError } = await supabase.rpc('increment_likes', { row_id: game.id });
              
-             if (!likeError) {
-                 // 2. Try RPC to increment securely
-                 const { error: rpcError } = await supabase.rpc('increment_likes', { row_id: game.id });
-                 
-                 // 3. Fallback: If RPC fails (e.g., function doesn't exist), do manual update
-                 if (rpcError) {
-                    console.warn("RPC increment_likes failed, falling back to manual update", rpcError);
-                    // Fetch latest count to be safe
-                    const { data: current, error: fetchError } = await supabase.from('games').select('likes').eq('id', game.id).single();
-                    if (!fetchError && current) {
-                        await supabase.from('games').update({ likes: (current.likes || 0) + 1 }).eq('id', game.id);
-                    }
-                 }
-             } else {
-                 // Check if error is duplicate key (23505) - means already liked
-                 if (likeError.code === '23505') {
-                     // Already liked, just sync state
-                     setLiked(true);
-                 } else {
-                     // Revert if genuine error
-                     setLikes(l => l - 1);
-                     setLiked(false);
-                     console.error("Like error:", likeError.message);
-                 }
+             if (rpcError) {
+                // Fallback: Manual update if RPC fails
+                console.warn("RPC increment_likes failed, falling back to manual update", rpcError);
+                const { data: current, error: fetchError } = await supabase.from('games').select('likes').eq('id', game.id).single();
+                if (!fetchError && current) {
+                    await supabase.from('games').update({ likes: (current.likes || 0) + 1 }).eq('id', game.id);
+                }
              }
           } catch (err) {
               console.error("Error liking game:", err);
-              setLikes(l => l - 1);
-              setLiked(false);
+              // Revert optimistic update only on critical failure
           }
-      } else {
-          // Demo mode like (no persistence needed beyond optimistic for now)
       }
   };
   

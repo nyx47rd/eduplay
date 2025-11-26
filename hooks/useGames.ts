@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase, isSupabaseConfigured } from '../services/supabase';
 import { GameModule, GameType } from '../types';
@@ -79,7 +78,7 @@ export const useGames = (userId?: string) => {
         }
     }, [userId]);
 
-    // 2. Realtime Subscription Setup
+    // 2. Realtime Subscription Setup with Granular Updates
     useEffect(() => {
         // Initial Fetch
         fetchGames();
@@ -93,8 +92,40 @@ export const useGames = (userId?: string) => {
                 'postgres_changes', 
                 { event: '*', schema: 'public', table: 'games' }, 
                 (payload) => {
-                    // Refresh data when any change happens
-                    fetchGames(); 
+                    const newGame = payload.new ? mapDbToGame(payload.new) : null;
+                    const oldGameId = payload.old ? (payload.old as any).id : null;
+
+                    if (payload.eventType === 'INSERT' && newGame) {
+                        // Add to lists
+                        if (newGame.isPublic) {
+                            setPublicGames(prev => [newGame, ...prev]);
+                        }
+                        if (userId && newGame.author_id === userId) {
+                            setMyGames(prev => [newGame, ...prev]);
+                        }
+                    } else if (payload.eventType === 'UPDATE' && newGame) {
+                        // Update in lists
+                        setPublicGames(prev => {
+                            if (newGame.isPublic) {
+                                // If already exists, update it. If not (was private), add it.
+                                const exists = prev.some(g => g.id === newGame.id);
+                                return exists 
+                                    ? prev.map(g => g.id === newGame.id ? newGame : g) 
+                                    : [newGame, ...prev]; 
+                            } else {
+                                // If made private, remove from public
+                                return prev.filter(g => g.id !== newGame.id);
+                            }
+                        });
+
+                        if (userId) {
+                            setMyGames(prev => prev.map(g => g.id === newGame.id ? newGame : g));
+                        }
+                    } else if (payload.eventType === 'DELETE' && oldGameId) {
+                        // Remove from lists
+                        setPublicGames(prev => prev.filter(g => g.id !== oldGameId));
+                        setMyGames(prev => prev.filter(g => g.id !== oldGameId));
+                    }
                 }
             )
             .subscribe();
@@ -102,7 +133,7 @@ export const useGames = (userId?: string) => {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [fetchGames]);
+    }, [fetchGames, userId]);
 
     // 3. Save Function (Create or Update)
     const saveGame = async (gameData: Partial<GameModule>, isEdit: boolean): Promise<GameModule> => {
@@ -191,10 +222,7 @@ export const useGames = (userId?: string) => {
         // Step 2: Delete the game
         const { error } = await supabase.from('games').delete().eq('id', id);
         if (error) throw error;
-        
-        // Optimistic update
-        setMyGames(prev => prev.filter(g => g.id !== id));
-        setPublicGames(prev => prev.filter(g => g.id !== id));
+        // State update handled by Realtime subscription
     };
 
     // 5. Delete All User Data (Account Deletion Helper)
@@ -233,9 +261,7 @@ export const useGames = (userId?: string) => {
                 await supabase.from('games').delete().in('id', gameIds);
             }
             
-            // Refresh
-            setMyGames([]);
-            fetchGames();
+            // Local state will be cleared by realtime subscription
             
         } catch (error) {
             console.error("Error deleting user data:", error);

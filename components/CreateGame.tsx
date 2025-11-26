@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { GameType, GameModule, QuizItem, MatchingPair, TrueFalseItem, FlashcardItem, SequenceItem, ClozeItem, GameSettings } from '../types';
 import { Save, Trash2, ArrowRight, ArrowLeft, Settings, Plus, Minus, X, Globe, Lock, Loader2 } from 'lucide-react';
@@ -35,6 +34,7 @@ const CreateGame: React.FC<CreateGameProps> = ({ onSave, onCancel, initialGame, 
   const [tfItems, setTfItems] = useState<TrueFalseItem[]>([]);
   const [flashcards, setFlashcards] = useState<FlashcardItem[]>([]);
   const [sequenceItems, setSequenceItems] = useState<string[]>([]);
+  const [sequenceQuestion, setSequenceQuestion] = useState('');
   const [clozeText, setClozeText] = useState('');
 
   // Temporary Inputs
@@ -71,6 +71,7 @@ const CreateGame: React.FC<CreateGameProps> = ({ onSave, onCancel, initialGame, 
             case GameType.SEQUENCE:
                const items = (initialGame.data as any).items as SequenceItem[] || [];
                setSequenceItems(items.sort((a,b) => a.order - b.order).map(i => i.text));
+               setSequenceQuestion((initialGame.data as any).question || '');
                break;
             case GameType.CLOZE:
                const d = (initialGame.data as any).data as ClozeItem;
@@ -114,7 +115,7 @@ const CreateGame: React.FC<CreateGameProps> = ({ onSave, onCancel, initialGame, 
             text,
             order: idx
         }));
-        finalData = { type: GameType.SEQUENCE, items };
+        finalData = { type: GameType.SEQUENCE, items, question: sequenceQuestion };
     } else if (gameType === GameType.CLOZE) {
         if (!clozeText.includes('[') || !clozeText.includes(']')) return alert("Use [brackets] to define blanks.");
         const regex = /\[(.*?)\]/g;
@@ -178,7 +179,22 @@ const CreateGame: React.FC<CreateGameProps> = ({ onSave, onCancel, initialGame, 
   };
   
   const renderMatchingEditor = () => ( <div className="space-y-6"> <div className="bg-slate-800 p-4 rounded-lg border border-slate-700 grid grid-cols-1 md:grid-cols-2 gap-4"> <input placeholder="Item A" value={tempMatch.a} onChange={e => setTempMatch({...tempMatch, a: e.target.value})} className="bg-slate-900 border border-slate-600 rounded p-2 text-white" /> <input placeholder="Item B" value={tempMatch.b} onChange={e => setTempMatch({...tempMatch, b: e.target.value})} className="bg-slate-900 border border-slate-600 rounded p-2 text-white" /> <button onClick={() => { if (!tempMatch.a || !tempMatch.b) return; setMatchingPairs([...matchingPairs, { id: Math.random().toString(), itemA: tempMatch.a, itemB: tempMatch.b }]); setTempMatch({ a: '', b: '' }); }} className="md:col-span-2 bg-indigo-600 text-white py-2 rounded">Add Pair</button> </div> <div className="space-y-2">{matchingPairs.map((pair, idx) => (<div key={idx} className="bg-slate-800 p-3 rounded border border-slate-700 flex justify-between items-center"><div className="text-gray-300">{pair.itemA} ↔ {pair.itemB}</div><Trash2 onClick={() => setMatchingPairs(matchingPairs.filter((_, i) => i !== idx))} size={16} className="text-red-400 cursor-pointer"/></div>))}</div> </div> );
-  const renderSequenceEditor = () => ( <div className="space-y-6"> <div className="bg-slate-800 p-4 rounded-lg border border-slate-700 flex gap-2"> <input placeholder="Step..." value={tempSeq} onChange={e => setTempSeq(e.target.value)} className="flex-grow bg-slate-900 border border-slate-600 rounded p-2 text-white" /> <button onClick={() => { if(!tempSeq) return; setSequenceItems([...sequenceItems, tempSeq]); setTempSeq(''); }} className="bg-indigo-600 text-white px-4 rounded">Add</button> </div> <div className="space-y-2">{sequenceItems.map((item, idx) => (<div key={idx} className="bg-slate-800 p-3 rounded border border-slate-700 flex justify-between"><span className="text-white">{idx+1}. {item}</span><Trash2 onClick={() => setSequenceItems(sequenceItems.filter((_, i) => i !== idx))} size={16} className="text-red-400 cursor-pointer"/></div>))}</div> </div> );
+  
+  const renderSequenceEditor = () => ( 
+    <div className="space-y-6"> 
+        <div className="bg-slate-800 p-4 rounded-lg border border-slate-700">
+             <label className="block text-sm text-gray-400 mb-2">Question / Instruction (Optional)</label>
+             <input placeholder="e.g., Order from smallest to largest..." value={sequenceQuestion} onChange={e => setSequenceQuestion(e.target.value)} className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white mb-4" />
+             
+             <div className="flex gap-2"> 
+                <input placeholder="Item to order..." value={tempSeq} onChange={e => setTempSeq(e.target.value)} className="flex-grow bg-slate-900 border border-slate-600 rounded p-2 text-white" /> 
+                <button onClick={() => { if(!tempSeq) return; setSequenceItems([...sequenceItems, tempSeq]); setTempSeq(''); }} className="bg-indigo-600 text-white px-4 rounded">Add</button> 
+             </div> 
+        </div>
+        <div className="space-y-2">{sequenceItems.map((item, idx) => (<div key={idx} className="bg-slate-800 p-3 rounded border border-slate-700 flex justify-between"><span className="text-white">{idx+1}. {item}</span><Trash2 onClick={() => setSequenceItems(sequenceItems.filter((_, i) => i !== idx))} size={16} className="text-red-400 cursor-pointer"/></div>))}</div> 
+    </div> 
+  );
+  
   const renderClozeEditor = () => ( <div className="bg-slate-800 p-4 rounded-lg border border-slate-700"><p className="text-gray-400 text-sm mb-2">Use [brackets] for blanks.</p><textarea rows={6} value={clozeText} onChange={e => setClozeText(e.target.value)} className="w-full bg-slate-900 border border-slate-600 rounded p-3 text-white font-mono" placeholder="The sky is [blue]."/></div> );
 
   const renderSettings = () => (

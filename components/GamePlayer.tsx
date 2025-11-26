@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { GameModule, GameType, QuizItem, MatchingPair, TrueFalseItem, FlashcardItem, SequenceItem, ClozeItem } from '../types';
 import { CheckCircle, XCircle, ChevronLeft, ChevronRight, RotateCcw, ArrowDown, Check, Clock } from 'lucide-react';
@@ -123,7 +122,7 @@ const GamePlayer: React.FC<GamePlayerProps> = ({ game, onBack }) => {
                     case GameType.FLASHCARD:
                     return <FlashcardPlayer data={game.data as { type: GameType.FLASHCARD; items: FlashcardItem[] }} onFinish={() => handleFinish(100, 100)} />;
                     case GameType.SEQUENCE:
-                    return <SequencePlayer data={game.data as { type: GameType.SEQUENCE; items: SequenceItem[] }} onFinish={handleFinish} />;
+                    return <SequencePlayer data={game.data as { type: GameType.SEQUENCE; items: SequenceItem[]; question?: string }} onFinish={handleFinish} />;
                     case GameType.CLOZE:
                     return <ClozePlayer data={game.data as { type: GameType.CLOZE; data: ClozeItem }} onFinish={handleFinish} caseSensitive={game.settings?.caseSensitive} />;
                     default:
@@ -382,7 +381,7 @@ const FlashcardPlayer = ({ data, onFinish }: { data: { items: FlashcardItem[] },
     );
 };
 
-const SequencePlayer = ({ data, onFinish }: { data: { items: SequenceItem[] }, onFinish: (s: number, t: number) => void }) => {
+const SequencePlayer = ({ data, onFinish }: { data: { items: SequenceItem[]; question?: string }, onFinish: (s: number, t: number) => void }) => {
     const [items, setItems] = useState<SequenceItem[]>([]);
     const [checked, setChecked] = useState(false);
     useEffect(() => { setItems([...data.items].sort(() => Math.random() - 0.5)); setChecked(false); }, [data]);
@@ -404,7 +403,7 @@ const SequencePlayer = ({ data, onFinish }: { data: { items: SequenceItem[] }, o
     return (
         <div className="max-w-xl mx-auto mt-4 animate-fade-in">
             <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 mb-6">
-                <h3 className="text-lg font-bold text-white mb-2 text-center">Arrange in correct order</h3>
+                <h3 className="text-lg font-bold text-white mb-4 text-center">{data.question || "Arrange in correct order"}</h3>
                 <div className="space-y-2">{items.map((item, idx) => (<div key={item.id} className={`p-4 rounded-lg flex items-center justify-between border ${checked ? (item.order === idx ? 'bg-emerald-900/40 border-emerald-500' : 'bg-red-900/40 border-red-500') : 'bg-slate-700 border-slate-600'}`}><span className="text-white font-medium">{item.text}</span>{!checked && (<div className="flex flex-col space-y-1 ml-4"><button onClick={() => moveItem(idx, 'up')} disabled={idx === 0} className="p-1 hover:bg-slate-600 rounded disabled:opacity-30 text-gray-300"><ChevronLeft className="w-4 h-4 rotate-90" /></button><button onClick={() => moveItem(idx, 'down')} disabled={idx === items.length - 1} className="p-1 hover:bg-slate-600 rounded disabled:opacity-30 text-gray-300"><ChevronLeft className="w-4 h-4 -rotate-90" /></button></div>)}</div>))}</div>
                 {!checked ? <button onClick={checkOrder} className="w-full mt-6 bg-indigo-600 text-white py-3 rounded-lg font-bold hover:bg-indigo-500">Check Order</button> : <button onClick={() => setChecked(false)} className="w-full mt-6 bg-slate-600 text-white py-3 rounded-lg font-bold hover:bg-slate-500">Retry</button>}
             </div>

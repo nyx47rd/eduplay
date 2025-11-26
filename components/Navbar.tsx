@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Gamepad2, PlusCircle, Home, LogOut, User, Globe, ChevronDown, Trash2, Settings } from 'lucide-react';
 import { supabase } from '../services/supabase';
@@ -90,6 +89,12 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, onChangeView, session, onD
                                     <p className="text-xs text-gray-500">Signed in as</p>
                                     <p className="text-sm font-medium text-white truncate">{session.user.email}</p>
                                 </div>
+                                <button
+                                    onClick={() => { onChangeView('settings'); setShowDropdown(false); }}
+                                    className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-slate-700 hover:text-white flex items-center"
+                                >
+                                    <Settings className="h-4 w-4 mr-2" /> Settings
+                                </button>
                                 <button
                                     onClick={handleSignOut}
                                     className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-slate-700 hover:text-white flex items-center"

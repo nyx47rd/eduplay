@@ -1,17 +1,17 @@
-
 import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import GameCard from './components/GameCard';
 import CreateGame from './components/CreateGame';
 import GamePlayer from './components/GamePlayer';
 import Auth from './components/Auth';
+import Settings from './components/Settings';
 import { GameModule } from './types';
 import { PlusCircle, Search, Loader2 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from './services/supabase';
 import { useGames } from './hooks/useGames';
 
 const App: React.FC = () => {
-  const [view, setView] = useState('home'); // 'home', 'community', 'create', 'play', 'auth'
+  const [view, setView] = useState('home'); // 'home', 'community', 'create', 'play', 'auth', 'settings'
   const [session, setSession] = useState<any>(null);
   const [activeGame, setActiveGame] = useState<GameModule | null>(null);
   const [editingGame, setEditingGame] = useState<GameModule | null>(null);
@@ -24,6 +24,24 @@ const App: React.FC = () => {
   useEffect(() => {
     const checkSession = async () => {
         const params = new URLSearchParams(window.location.search);
+        
+        // Handle QR Login
+        const accessToken = params.get('access_token');
+        const refreshToken = params.get('refresh_token');
+        const type = params.get('type');
+
+        if (accessToken && refreshToken && type === 'qr_login' && supabase) {
+             const { error } = await (supabase.auth as any).setSession({
+                 access_token: accessToken,
+                 refresh_token: refreshToken
+             });
+             if (!error) {
+                 // Clean URL
+                 window.history.replaceState({}, document.title, window.location.pathname);
+                 setIsAuthChecking(false);
+                 return; // Let subscription handle the rest
+             }
+        }
         
         // Handle Password Reset Redirect from Email
         if (params.get('view') === 'reset' || window.location.hash.includes('type=recovery')) {
@@ -159,6 +177,8 @@ const App: React.FC = () => {
     switch (view) {
       case 'auth':
           return <Auth onSuccess={() => { setView('home'); }} initialMode={authMode} />;
+      case 'settings':
+          return session ? <Settings session={session} onSignOut={async () => { if(supabase) await (supabase.auth as any).signOut(); }} /> : <Auth onSuccess={() => setView('settings')} />;
       case 'create':
         return session ? (
           <CreateGame 
