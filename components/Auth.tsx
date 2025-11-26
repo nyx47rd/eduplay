@@ -1,19 +1,24 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../services/supabase';
-import { Mail, Lock, Loader2, LogIn, AlertTriangle, ArrowLeft, KeyRound } from 'lucide-react';
+import { Mail, Lock, Loader2, LogIn, AlertTriangle, ArrowLeft, KeyRound, CheckCircle } from 'lucide-react';
 
 interface AuthProps {
     onSuccess: (user?: any) => void;
+    initialMode?: 'signin' | 'signup' | 'forgot' | 'update_password';
 }
 
-const Auth: React.FC<AuthProps> = ({ onSuccess }) => {
+const Auth: React.FC<AuthProps> = ({ onSuccess, initialMode = 'signin' }) => {
     const [loading, setLoading] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [mode, setMode] = useState<'signin' | 'signup' | 'forgot'>('signin');
+    const [mode, setMode] = useState<'signin' | 'signup' | 'forgot' | 'update_password'>(initialMode);
     const [msg, setMsg] = useState('');
     const [isSuccess, setIsSuccess] = useState(false);
+
+    useEffect(() => {
+        setMode(initialMode);
+    }, [initialMode]);
 
     const isDemo = !isSupabaseConfigured();
 
@@ -50,6 +55,16 @@ const Auth: React.FC<AuthProps> = ({ onSuccess }) => {
                 setMsg('Registration successful! Check your email to confirm.');
                 setIsSuccess(true);
                 setMode('signin');
+            } else if (mode === 'update_password') {
+                const { error } = await (supabase.auth as any).updateUser({
+                    password: password
+                });
+                if (error) throw error;
+                setMsg('Password updated successfully!');
+                setIsSuccess(true);
+                setTimeout(() => {
+                    onSuccess();
+                }, 1500);
             } else {
                 const { error } = await (supabase.auth as any).signInWithPassword({
                     email,
@@ -86,39 +101,55 @@ const Auth: React.FC<AuthProps> = ({ onSuccess }) => {
          );
     }
 
+    const getTitle = () => {
+        switch(mode) {
+            case 'signin': return 'Welcome Back';
+            case 'signup': return 'Create Account';
+            case 'forgot': return 'Reset Password';
+            case 'update_password': return 'Set New Password';
+        }
+    };
+
+    const getSubtitle = () => {
+         switch(mode) {
+            case 'signin': return 'Sign in to access your games';
+            case 'signup': return 'Join to start creating';
+            case 'forgot': return 'Enter email to receive reset link';
+            case 'update_password': return 'Enter your new password';
+        }
+    };
+
     return (
         <div className="max-w-md mx-auto mt-20 bg-slate-800 p-8 rounded-2xl shadow-2xl border border-slate-700">
             <div className="text-center mb-8">
                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-indigo-900/50 mb-4">
-                    {mode === 'forgot' ? <KeyRound className="w-8 h-8 text-indigo-400" /> : <LogIn className="w-8 h-8 text-indigo-400" />}
+                    {mode === 'forgot' || mode === 'update_password' ? <KeyRound className="w-8 h-8 text-indigo-400" /> : <LogIn className="w-8 h-8 text-indigo-400" />}
                 </div>
-                <h2 className="text-2xl font-bold text-white">
-                    {mode === 'signin' ? 'Welcome Back' : mode === 'signup' ? 'Create Account' : 'Reset Password'}
-                </h2>
-                <p className="text-slate-400 mt-2">
-                    {mode === 'signin' ? 'Sign in to access your games' : mode === 'signup' ? 'Join to start creating' : 'Enter email to receive reset link'}
-                </p>
+                <h2 className="text-2xl font-bold text-white">{getTitle()}</h2>
+                <p className="text-slate-400 mt-2">{getSubtitle()}</p>
             </div>
 
             <form onSubmit={handleAuth} className="space-y-4">
-                <div>
-                    <label className="block text-sm font-medium text-slate-400 mb-1">Email</label>
-                    <div className="relative">
-                        <Mail className="absolute left-3 top-3 h-5 w-5 text-slate-500" />
-                        <input
-                            type="email"
-                            required
-                            value={email}
-                            onChange={e => setEmail(e.target.value)}
-                            className="pl-10 w-full bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-white focus:border-indigo-500 outline-none"
-                            placeholder="you@example.com"
-                        />
+                {mode !== 'update_password' && (
+                    <div>
+                        <label className="block text-sm font-medium text-slate-400 mb-1">Email</label>
+                        <div className="relative">
+                            <Mail className="absolute left-3 top-3 h-5 w-5 text-slate-500" />
+                            <input
+                                type="email"
+                                required
+                                value={email}
+                                onChange={e => setEmail(e.target.value)}
+                                className="pl-10 w-full bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-white focus:border-indigo-500 outline-none"
+                                placeholder="you@example.com"
+                            />
+                        </div>
                     </div>
-                </div>
+                )}
                 
                 {mode !== 'forgot' && (
                     <div>
-                        <label className="block text-sm font-medium text-slate-400 mb-1">Password</label>
+                        <label className="block text-sm font-medium text-slate-400 mb-1">{mode === 'update_password' ? 'New Password' : 'Password'}</label>
                         <div className="relative">
                             <Lock className="absolute left-3 top-3 h-5 w-5 text-slate-500" />
                             <input
@@ -143,18 +174,18 @@ const Auth: React.FC<AuthProps> = ({ onSuccess }) => {
                 )}
 
                 {msg && (
-                    <div className={`text-sm text-center p-2 rounded ${isSuccess ? 'bg-emerald-900/50 text-emerald-400' : 'bg-red-900/50 text-red-400'}`}>
-                        {msg}
+                    <div className={`text-sm text-center p-2 rounded flex items-center justify-center ${isSuccess ? 'bg-emerald-900/50 text-emerald-400' : 'bg-red-900/50 text-red-400'}`}>
+                        {isSuccess && <CheckCircle className="w-4 h-4 mr-2"/>} {msg}
                     </div>
                 )}
 
                 <button
                     type="submit"
-                    disabled={loading}
+                    disabled={loading || (isSuccess && mode === 'update_password')}
                     className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center"
                 >
                     {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 
-                        (mode === 'signin' ? 'Sign In' : mode === 'signup' ? 'Sign Up' : 'Send Reset Link')}
+                        (mode === 'signin' ? 'Sign In' : mode === 'signup' ? 'Sign Up' : mode === 'update_password' ? 'Update Password' : 'Send Reset Link')}
                 </button>
             </form>
 
@@ -163,6 +194,8 @@ const Auth: React.FC<AuthProps> = ({ onSuccess }) => {
                      <button onClick={() => setMode('signin')} className="text-indigo-400 hover:underline font-bold flex items-center justify-center w-full">
                         <ArrowLeft className="w-4 h-4 mr-1"/> Back to Sign In
                      </button>
+                ) : mode === 'update_password' ? (
+                     <span/>
                 ) : (
                     <>
                         {mode === 'signin' ? "Don't have an account? " : "Already have an account? "}

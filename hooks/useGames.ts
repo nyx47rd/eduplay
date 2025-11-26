@@ -93,16 +93,11 @@ export const useGames = (userId?: string) => {
                 'postgres_changes', 
                 { event: '*', schema: 'public', table: 'games' }, 
                 (payload) => {
-                    console.log('Realtime change detected:', payload);
                     // Refresh data when any change happens
                     fetchGames(); 
                 }
             )
-            .subscribe((status) => {
-                if (status === 'SUBSCRIBED') {
-                    console.log('Connected to Realtime updates');
-                }
-            });
+            .subscribe();
 
         return () => {
             supabase.removeChannel(channel);
@@ -190,17 +185,62 @@ export const useGames = (userId?: string) => {
         // Step 1: Manually delete 'likes' first to avoid Foreign Key Constraint error
         const { error: likeError } = await supabase.from('likes').delete().eq('game_id', id);
         if (likeError) {
-            console.warn("Error cleaning up likes (might be empty):", likeError.message);
+            console.warn("Error cleaning up likes:", likeError.message);
         }
 
         // Step 2: Delete the game
         const { error } = await supabase.from('games').delete().eq('id', id);
         if (error) throw error;
         
-        // No need to manually update state, Realtime subscription will catch the DELETE event
-        // but we can do optimistic update if we want instant feedback
+        // Optimistic update
         setMyGames(prev => prev.filter(g => g.id !== id));
         setPublicGames(prev => prev.filter(g => g.id !== id));
+    };
+
+    // 5. Delete All User Data (Account Deletion Helper)
+    const deleteAllUserData = async () => {
+        if (!isSupabaseConfigured() || !supabase || !userId) {
+            // Demo mode clear
+            const localData = localStorage.getItem('demo_games');
+            if (localData) {
+                const demoGames: GameModule[] = JSON.parse(localData);
+                // Keep only games NOT by this user (which is 'demo-user')
+                const filtered = demoGames.filter(g => g.author_id !== 'demo-user');
+                localStorage.setItem('demo_games', JSON.stringify(filtered));
+                fetchGames();
+            }
+            return;
+        }
+
+        try {
+            // Delete user's likes
+            await supabase.from('likes').delete().eq('user_id', userId);
+            
+            // Delete user's games (will require deleting associated likes first, but we handle likes above. 
+            // If other users liked THIS user's games, we need to delete those likes or cascade.
+            // Since we can't easily query "all likes on my games" without complex query, 
+            // we rely on Supabase CASCADE if configured, OR we fetch game IDs first.)
+            
+            // Fetch all game IDs by this user
+            const { data: userGames } = await supabase.from('games').select('id').eq('author_id', userId);
+            
+            if (userGames && userGames.length > 0) {
+                const gameIds = userGames.map(g => g.id);
+                // Delete all likes associated with these games (from ANY user)
+                await supabase.from('likes').delete().in('game_id', gameIds);
+                
+                // Now delete the games
+                await supabase.from('games').delete().in('id', gameIds);
+            }
+            
+            // Refresh
+            setMyGames([]);
+            fetchGames();
+            
+        } catch (error) {
+            console.error("Error deleting user data:", error);
+            throw error;
+        }
     };
 
     return {
@@ -209,6 +249,7 @@ export const useGames = (userId?: string) => {
         loading,
         fetchGames,
         saveGame,
-        deleteGame
+        deleteGame,
+        deleteAllUserData
     };
 };

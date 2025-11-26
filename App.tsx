@@ -16,14 +16,20 @@ const App: React.FC = () => {
   const [activeGame, setActiveGame] = useState<GameModule | null>(null);
   const [editingGame, setEditingGame] = useState<GameModule | null>(null);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
+  const [authMode, setAuthMode] = useState<'signin' | 'signup' | 'forgot' | 'update_password'>('signin');
 
   // Use custom hook for data management
-  const { publicGames, myGames, loading, saveGame, deleteGame } = useGames(session?.user?.id);
+  const { publicGames, myGames, loading, saveGame, deleteGame, deleteAllUserData } = useGames(session?.user?.id);
 
   useEffect(() => {
     const checkSession = async () => {
         const params = new URLSearchParams(window.location.search);
-        if (params.get('view') === 'reset') {
+        
+        // Handle Password Reset Redirect from Email
+        if (params.get('view') === 'reset' || window.location.hash.includes('type=recovery')) {
+             setView('auth');
+             setAuthMode('update_password');
+        } else if (params.get('view') === 'reset') {
             setView('auth');
         }
 
@@ -38,10 +44,21 @@ const App: React.FC = () => {
             setSession(initialSession);
             
             // Listen for changes
-            const { data: { subscription } } = (supabase.auth as any).onAuthStateChange((_event: any, currentSession: any) => {
+            const { data: { subscription } } = (supabase.auth as any).onAuthStateChange((event: string, currentSession: any) => {
                 setSession(currentSession);
-                if (currentSession && view === 'auth') {
-                    setView('home');
+                
+                if (event === 'PASSWORD_RECOVERY') {
+                    setAuthMode('update_password');
+                    setView('auth');
+                } else if (event === 'SIGNED_IN') {
+                    // Only redirect if we are not in recovery flow
+                    if (authMode !== 'update_password') {
+                        // If we were in auth view, go to home
+                        if (view === 'auth') setView('home');
+                    }
+                } else if (event === 'SIGNED_OUT') {
+                    setView('auth');
+                    setAuthMode('signin');
                 }
             });
 
@@ -51,7 +68,7 @@ const App: React.FC = () => {
     };
 
     checkSession();
-  }, []);
+  }, [view, authMode]);
 
   const handleSaveGame = async (gameData: Partial<GameModule>, isEdit: boolean) => {
       await saveGame(gameData, isEdit);
@@ -65,6 +82,25 @@ const App: React.FC = () => {
               await deleteGame(id);
           } catch(e: any) {
               alert("Error deleting game: " + e.message);
+          }
+      }
+  };
+
+  const handleDeleteAccount = async () => {
+      const confirmMsg = "Are you sure you want to delete your account?\n\nThis will PERMANENTLY DELETE all your games, likes, and data. This action cannot be undone.";
+      if(window.confirm(confirmMsg)) {
+          // Double confirm
+          if(window.confirm("Please confirm one last time: Delete everything?")) {
+              try {
+                  await deleteAllUserData();
+                  if (supabase) {
+                      await (supabase.auth as any).signOut();
+                  }
+                  setView('auth');
+                  setAuthMode('signin');
+              } catch(e: any) {
+                  alert("Error deleting account: " + e.message);
+              }
           }
       }
   };
@@ -103,21 +139,26 @@ const App: React.FC = () => {
   };
 
   const renderContent = () => {
-    // Show loader while checking auth status to prevent flashing Login screen
+    // Show loader while checking auth status
     if (isAuthChecking) {
          return <div className="flex justify-center items-center h-64"><Loader2 className="w-8 h-8 animate-spin text-indigo-500"/></div>;
+    }
+
+    // Special case: If in recovery mode, show Auth regardless of session
+    if (authMode === 'update_password' && view === 'auth') {
+        return <Auth onSuccess={() => { setAuthMode('signin'); setView('home'); }} initialMode="update_password" />;
     }
 
     if (!session && view === 'auth') {
         return <Auth onSuccess={(user) => {
             setSession(user ? { user } : null);
             setView('home');
-        }} />;
+        }} initialMode={authMode} />;
     }
 
     switch (view) {
       case 'auth':
-          return <Auth onSuccess={() => setView('home')} />;
+          return <Auth onSuccess={() => { setView('home'); }} initialMode={authMode} />;
       case 'create':
         return session ? (
           <CreateGame 
@@ -151,8 +192,7 @@ const App: React.FC = () => {
       case 'home':
       default:
         if (!session && !isAuthChecking) {
-             // If not logged in and trying to access home, show Auth
-             return <Auth onSuccess={() => setView('home')} />;
+             return <Auth onSuccess={() => setView('home')} initialMode="signin" />;
         }
         return (
           <div className="space-y-8 animate-fade-in">
@@ -185,10 +225,16 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col font-sans text-slate-100 bg-slate-900">
-      <Navbar currentView={view} onChangeView={(v) => {
+      <Navbar 
+        currentView={view} 
+        onChangeView={(v) => {
           if (v === 'create') setEditingGame(null);
           setView(v);
-      }} session={session} />
+          setAuthMode('signin');
+        }} 
+        session={session} 
+        onDeleteAccount={handleDeleteAccount}
+      />
       
       {!isSupabaseConfigured() && (
           <div className="bg-yellow-600/20 border-b border-yellow-600/50 text-yellow-200 text-xs text-center py-1">

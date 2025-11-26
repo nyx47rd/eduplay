@@ -1,20 +1,40 @@
-import React from 'react';
-import { Gamepad2, PlusCircle, Home, LogOut, User, Globe } from 'lucide-react';
+
+import React, { useState, useRef, useEffect } from 'react';
+import { Gamepad2, PlusCircle, Home, LogOut, User, Globe, ChevronDown, Trash2, Settings } from 'lucide-react';
 import { supabase } from '../services/supabase';
 
 interface NavbarProps {
   currentView: string;
   onChangeView: (view: string) => void;
   session: any;
+  onDeleteAccount?: () => void;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ currentView, onChangeView, session }) => {
-  
+const Navbar: React.FC<NavbarProps> = ({ currentView, onChangeView, session, onDeleteAccount }) => {
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
   const handleSignOut = async () => {
+      setShowDropdown(false);
       if (supabase) {
           await (supabase.auth as any).signOut();
       }
   };
+
+  const handleDelete = () => {
+      setShowDropdown(false);
+      if (onDeleteAccount) onDeleteAccount();
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   return (
     <nav className="sticky top-0 z-50 bg-slate-900 border-b border-slate-700 shadow-lg">
@@ -53,13 +73,38 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, onChangeView, session }) =
                     <PlusCircle className="h-4 w-4 mr-2" />
                     <span className="hidden sm:inline">Create</span>
                     </button>
-                    <button 
-                        onClick={handleSignOut}
-                        className="p-2 text-gray-400 hover:text-white hover:bg-slate-800 rounded-full"
-                        title="Sign Out"
-                    >
-                        <LogOut className="h-5 w-5" />
-                    </button>
+                    
+                    {/* User Dropdown */}
+                    <div className="relative" ref={dropdownRef}>
+                        <button 
+                            onClick={() => setShowDropdown(!showDropdown)}
+                            className="flex items-center p-2 text-gray-300 hover:text-white hover:bg-slate-800 rounded-full transition-colors focus:outline-none"
+                        >
+                            <User className="h-5 w-5" />
+                            <ChevronDown className="h-3 w-3 ml-1" />
+                        </button>
+
+                        {showDropdown && (
+                            <div className="absolute right-0 mt-2 w-48 bg-slate-800 rounded-md shadow-lg py-1 border border-slate-700 ring-1 ring-black ring-opacity-5 animate-fade-in origin-top-right">
+                                <div className="px-4 py-2 border-b border-slate-700">
+                                    <p className="text-xs text-gray-500">Signed in as</p>
+                                    <p className="text-sm font-medium text-white truncate">{session.user.email}</p>
+                                </div>
+                                <button
+                                    onClick={handleSignOut}
+                                    className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-slate-700 hover:text-white flex items-center"
+                                >
+                                    <LogOut className="h-4 w-4 mr-2" /> Sign Out
+                                </button>
+                                <button
+                                    onClick={handleDelete}
+                                    className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-900/20 hover:text-red-300 flex items-center border-t border-slate-700 mt-1"
+                                >
+                                    <Trash2 className="h-4 w-4 mr-2" /> Delete Account
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </>
             ) : (
                 <button 

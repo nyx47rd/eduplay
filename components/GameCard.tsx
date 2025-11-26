@@ -34,23 +34,41 @@ const GameCard: React.FC<GameCardProps> = ({ game, onPlay, onEdit, onDelete, cur
 
       if (isSupabaseConfigured() && supabase) {
           try {
-             // Insert into likes table
+             // 1. Insert into likes table
              const { error: likeError } = await supabase.from('likes').insert({ user_id: currentUserId, game_id: game.id });
              
              if (!likeError) {
-                 // Call RPC to increment counter securely
-                 await supabase.rpc('increment_likes', { row_id: game.id });
+                 // 2. Try RPC to increment securely
+                 const { error: rpcError } = await supabase.rpc('increment_likes', { row_id: game.id });
+                 
+                 // 3. Fallback: If RPC fails (e.g., function doesn't exist), do manual update
+                 if (rpcError) {
+                    console.warn("RPC increment_likes failed, falling back to manual update", rpcError);
+                    // Fetch latest count to be safe
+                    const { data: current, error: fetchError } = await supabase.from('games').select('likes').eq('id', game.id).single();
+                    if (!fetchError && current) {
+                        await supabase.from('games').update({ likes: (current.likes || 0) + 1 }).eq('id', game.id);
+                    }
+                 }
              } else {
-                 // Revert if already liked or error
-                 setLikes(l => l - 1);
-                 setLiked(false);
-                 console.error("Like error:", likeError.message);
+                 // Check if error is duplicate key (23505) - means already liked
+                 if (likeError.code === '23505') {
+                     // Already liked, just sync state
+                     setLiked(true);
+                 } else {
+                     // Revert if genuine error
+                     setLikes(l => l - 1);
+                     setLiked(false);
+                     console.error("Like error:", likeError.message);
+                 }
              }
           } catch (err) {
               console.error("Error liking game:", err);
+              setLikes(l => l - 1);
+              setLiked(false);
           }
       } else {
-          // Demo mode like (no persistence needed beyond optimistic for now, or could write to localStorage)
+          // Demo mode like (no persistence needed beyond optimistic for now)
       }
   };
   
